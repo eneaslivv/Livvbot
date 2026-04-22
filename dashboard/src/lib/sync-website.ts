@@ -87,9 +87,28 @@ async function fetchText(url: string, timeoutMs = 10_000): Promise<string | null
   }
 }
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+}
+
 function parseSitemapLocs(xml: string): string[] {
   const matches = xml.match(/<loc>([^<]+)<\/loc>/g) ?? []
-  return matches.map((m) => m.replace(/<\/?loc>/g, '').trim())
+  return matches.map((m) => decodeEntities(m.replace(/<\/?loc>/g, '').trim()))
+}
+
+function isSitemapFile(url: string): boolean {
+  try {
+    const path = new URL(url).pathname
+    return /\.xml$/i.test(path) || /\/sitemap[^/]*$/i.test(path)
+  } catch {
+    return /\.xml(\?|$)/i.test(url)
+  }
 }
 
 async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
@@ -122,7 +141,7 @@ async function discoverSitemapUrls(baseUrl: string): Promise<string[]> {
     if (!xml) continue
     const locs = parseSitemapLocs(xml)
     for (const loc of locs) {
-      if (loc.endsWith('.xml') && !seen.has(loc)) {
+      if (isSitemapFile(loc) && !seen.has(loc)) {
         queue.push(loc)
       } else {
         urls.push(loc)

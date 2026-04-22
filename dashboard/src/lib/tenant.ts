@@ -1,28 +1,35 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export async function getCurrentUser() {
+// Each function is wrapped in React.cache — Next.js memoizes per request,
+// so calling getTenantBySlug('kru') 5 times across layout + page components
+// only hits Supabase once.
+
+export const getCurrentUser = cache(async () => {
   const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) redirect('/login')
   return user
-}
+})
 
-export async function isLivvAdmin() {
+export const isLivvAdmin = cache(async () => {
   const supabase = createClient()
   const { data } = await supabase.rpc('is_livv_admin')
   return Boolean(data)
-}
+})
 
-export async function getUserTenants() {
+export const getUserTenants = cache(async () => {
   const supabase = createClient()
   const { data } = await supabase
     .from('tenant_users')
     .select('role, tenant:tenants(id, slug, name, brand_config, is_active)')
   return data ?? []
-}
+})
 
-export async function getTenantBySlug(slug: string) {
+export const getTenantBySlug = cache(async (slug: string) => {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('tenants')
@@ -31,4 +38,19 @@ export async function getTenantBySlug(slug: string) {
     .single()
   if (error) return null
   return data
-}
+})
+
+export const getTenantStats = cache(
+  async (tenantId: string): Promise<{
+    products: number
+    faqs: number
+    recipes: number
+    conversations: number
+    documents: number
+  }> => {
+    const supabase = createClient()
+    const { data } = await supabase.rpc('tenant_stats', { p_tenant_id: tenantId })
+    if (data && typeof data === 'object') return data as any
+    return { products: 0, faqs: 0, recipes: 0, conversations: 0, documents: 0 }
+  }
+)

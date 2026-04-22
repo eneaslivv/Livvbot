@@ -13,9 +13,11 @@ import {
   Globe,
   Download,
   Sparkles,
+  FileText,
 } from 'lucide-react'
 import { Card, Field, TextArea, Button, Alert, EmptyState, Badge } from '@/components/ui'
 import { EditableKnowledgeList } from '@/components/EditableKnowledgeList'
+import { DocumentUpload } from '@/components/DocumentUpload'
 
 const PREVIEW = process.env.NEXT_PUBLIC_PREVIEW_MODE === '1'
 
@@ -346,7 +348,15 @@ async function importFromUrl(slug: string, formData: FormData) {
   }
 }
 
-type Tab = 'products' | 'faqs' | 'recipes'
+type Tab = 'products' | 'faqs' | 'recipes' | 'documents'
+
+async function deleteDocument(slug: string, id: string) {
+  'use server'
+  const supabase = createClient()
+  // chunks cascade-delete via FK; still explicit for clarity
+  await supabase.from('documents').delete().eq('id', id)
+  revalidatePath(`/dashboard/${slug}/knowledge`)
+}
 
 export default async function KnowledgePage({
   params,
@@ -369,33 +379,41 @@ export default async function KnowledgePage({
 
   const tab: Tab = (searchParams.tab as Tab) ?? 'products'
   const supabase = createClient()
-  const [{ data: products }, { data: recipes }, { data: faqs }] = await Promise.all([
-    supabase
-      .from('products')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('recipes')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('faqs')
-      .select('*')
-      .eq('tenant_id', tenant.id)
-      .order('created_at', { ascending: false }),
-  ])
+  const [{ data: products }, { data: recipes }, { data: faqs }, { data: documents }] =
+    await Promise.all([
+      supabase
+        .from('products')
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('recipes')
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('faqs')
+        .select('*')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('documents')
+        .select('id, title, source_type, original_filename, file_size_bytes, chunk_count, created_at')
+        .eq('tenant_id', tenant.id)
+        .order('created_at', { ascending: false }),
+    ])
 
   const counts = {
     products: products?.length ?? 0,
     faqs: faqs?.length ?? 0,
     recipes: recipes?.length ?? 0,
+    documents: documents?.length ?? 0,
   }
 
   const tabs: { id: Tab; label: string; icon: any; count: number }[] = [
     { id: 'products', label: 'Products', icon: Package, count: counts.products },
     { id: 'faqs', label: 'FAQs', icon: HelpCircle, count: counts.faqs },
+    { id: 'documents', label: 'Documents', icon: FileText, count: counts.documents },
     { id: 'recipes', label: 'Recipes', icon: UtensilsCrossed, count: counts.recipes },
   ]
 
@@ -580,6 +598,19 @@ export default async function KnowledgePage({
             </>
           }
         />
+      )}
+
+      {tab === 'documents' && (
+        <Card
+          title="Upload documents"
+          description="Drop PDFs, Markdown or plain text files. The bot will chunk them, embed each chunk, and reference them like any other knowledge."
+        >
+          <DocumentUpload
+            slug={params.slug}
+            documents={documents ?? []}
+            deleteAction={deleteDocument}
+          />
+        </Card>
       )}
     </div>
   )

@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { getTenantBySlug } from '@/lib/tenant'
+import { getTenantBySlug, getTenantStats } from '@/lib/tenant'
 import { notFound } from 'next/navigation'
 import { BotPreview } from '@/components/BotPreview'
 import {
@@ -22,27 +21,21 @@ import {
 export default async function TenantOverview({ params }: { params: { slug: string } }) {
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
-
-  const supabase = createClient()
   const bc = tenant.brand_config ?? {}
 
-  const [products, recipes, faqs, conversations] = await Promise.all([
-    supabase.from('products').select('id', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
-    supabase.from('recipes').select('id', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
-    supabase.from('faqs').select('id', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
-    supabase.from('conversations').select('id', { count: 'exact', head: true }).eq('tenant_id', tenant.id),
-  ])
+  // Single roundtrip for all counts
+  const counts = await getTenantStats(tenant.id)
 
   const stats = [
-    { label: 'Products', value: products.count ?? 0, icon: Package, href: 'knowledge?tab=products', color: 'blue' },
-    { label: 'FAQs', value: faqs.count ?? 0, icon: HelpCircle, href: 'knowledge?tab=faqs', color: 'purple' },
-    { label: 'Recipes', value: recipes.count ?? 0, icon: UtensilsCrossed, href: 'knowledge?tab=recipes', color: 'orange' },
-    { label: 'Conversations', value: conversations.count ?? 0, icon: MessagesSquare, href: 'conversations', color: 'emerald' },
+    { label: 'Products', value: counts.products, icon: Package, href: 'knowledge?tab=products', color: 'blue' },
+    { label: 'FAQs', value: counts.faqs, icon: HelpCircle, href: 'knowledge?tab=faqs', color: 'purple' },
+    { label: 'Recipes', value: counts.recipes, icon: UtensilsCrossed, href: 'knowledge?tab=recipes', color: 'orange' },
+    { label: 'Conversations', value: counts.conversations, icon: MessagesSquare, href: 'conversations', color: 'emerald' },
   ] as const
 
   const hasApiKey = Boolean(tenant.openai_api_key_encrypted)
   const hasOrigins = (tenant.allowed_origins?.length ?? 0) > 0
-  const hasContent = (products.count ?? 0) + (faqs.count ?? 0) > 0
+  const hasContent = counts.products + counts.faqs + counts.documents > 0
 
   const checklist = [
     { done: hasApiKey, label: 'OpenAI API key', description: 'Required so the bot can respond.', icon: Key, href: 'settings#ai' },
