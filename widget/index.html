@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>LIVV Bots Widget — Dev</title>
+</head>
+<body>
+  <h1>Test page</h1>
+  <p>The widget should appear in the bottom-right corner.</p>
+
+  <script type="module" src="/src/main.tsx"></script>
+  <script type="module">
+    setTimeout(() => {
+      window.LivvBots.init({
+        tenantSlug: 'kru',
+        apiUrl: 'https://hlycvssnnctrudywchxo.supabase.co',
+        brand: {
+          botName: 'Crew',
+          mascotUrl: '',
+          primaryColor: '#1a1a1a',
+          accentColor: '#d4a017',
+          greeting: "Hey, I'm Crew. What are you making tonight?",
+          placeholder: 'Ask me about sauces, recipes, or anything KRU...',
+        },
+        quickActions: [
+          { id: 'qa_1', label: 'Best hot sauce', prompt: 'Which is your hottest sauce?' },
+          { id: 'qa_2', label: 'Pair with salmon', prompt: 'What sauce pairs with grilled salmon?' },
+          { id: 'qa_3', label: 'Vegan options', prompt: 'Are your sauces vegan?' },
+          { id: 'qa_4', label: 'Shipping', prompt: 'Do you ship internationally?' },
+        ],
+      })
+    }, 100)
+  </script>
+</body>
+</html>

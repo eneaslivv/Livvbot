@@ -1,0 +1,17 @@
+[
+  {
+    "category": "shipping",
+    "question": "Do you ship internationally?",
+    "answer": "We currently ship within the US. International shipping is coming soon."
+  },
+  {
+    "category": "allergens",
+    "question": "Are KRU sauces vegan?",
+    "answer": "Yes, all KRU sauces are 100% vegan. Specific allergen info is listed on each product page."
+  },
+  {
+    "category": "storage",
+    "question": "How should I store my sauce after opening?",
+    "answer": "Refrigerate after opening. Consume within 3 months for best flavor."
+  }
+]

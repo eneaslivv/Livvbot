@@ -1,0 +1,289 @@
+.livv-bot {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+.livv-bot-launcher {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--livv-primary);
+  color: var(--livv-accent);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+
+.livv-bot-launcher:hover {
+  transform: scale(1.05);
+}
+
+.livv-bot-launcher img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.livv-bot-window {
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  height: 560px;
+  max-height: calc(100vh - 48px);
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.livv-bot-header {
+  background: var(--livv-primary);
+  color: #fff;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.livv-bot-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.livv-bot-identity img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.livv-bot-close {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.livv-bot-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fafaf8;
+}
+
+.livv-bot-msg {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.livv-bot-msg-user {
+  align-self: flex-end;
+  background: var(--livv-primary);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.livv-bot-msg-assistant {
+  align-self: flex-start;
+  background: #fff;
+  color: #1a1a1a;
+  border: 1px solid #eee;
+  border-bottom-left-radius: 4px;
+}
+
+.livv-bot-typing {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.livv-bot-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 8px;
+}
+
+.livv-bot-pill {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  color: #1a1a1a;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.livv-bot-pill:hover {
+  border-color: var(--livv-primary);
+  background: var(--livv-primary);
+  color: #fff;
+}
+
+.livv-bot-launcher-pulse::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--livv-accent);
+  opacity: 0.6;
+  animation: livv-pulse 1.8s ease-out infinite;
+}
+
+.livv-bot-launcher-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: #e11d48;
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+
+.livv-bot-launcher {
+  position: relative;
+}
+
+@keyframes livv-pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.livv-bot-cart-chip {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.livv-bot-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.livv-bot-dots span {
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: livv-dot 1.2s ease-in-out infinite;
+}
+.livv-bot-dots span:nth-child(2) { animation-delay: 0.15s; }
+.livv-bot-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes livv-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
+.livv-bot-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.livv-bot-card {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: all 0.15s;
+}
+
+.livv-bot-card:hover {
+  border-color: var(--livv-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.livv-bot-card-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.livv-bot-card-desc {
+  font-size: 11px;
+  color: #737373;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.livv-bot-card-cta {
+  font-size: 11px;
+  color: var(--livv-primary);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.livv-bot-error {
+  color: #c00;
+  font-size: 13px;
+  padding: 8px;
+}
+
+.livv-bot-input {
+  display: flex;
+  padding: 12px;
+  border-top: 1px solid #eee;
+  gap: 8px;
+  background: #fff;
+}
+
+.livv-bot-input input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+}
+
+.livv-bot-input input:focus {
+  border-color: var(--livv-accent);
+}
+
+.livv-bot-input button {
+  padding: 10px 16px;
+  background: var(--livv-accent);
+  color: #1a1a1a;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.livv-bot-input button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

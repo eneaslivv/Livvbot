@@ -1,0 +1,30 @@
+[
+  {
+    "external_id": "shopify_fiery_id",
+    "handle": "fiery-sauce",
+    "name": "Fiery",
+    "description": "A bold, exotic hot sauce with a smoky heat. Made with hand-picked peppers and a secret blend of spices.",
+    "usage_notes": "Perfect drizzled over grilled meats, tacos, or eggs. Pairs beautifully with cheese boards. Use sparingly — a little goes a long way.",
+    "metadata": {
+      "heat_level": 4,
+      "is_vegan": true,
+      "allergens": [],
+      "size": "5oz"
+    },
+    "tags": ["bestseller", "exotic", "hot-sauce"]
+  },
+  {
+    "external_id": "shopify_mile_id",
+    "handle": "mile-sauce",
+    "name": "Mile",
+    "description": "A mellow, versatile sauce with deep umami notes. The everyday hero of the KRU lineup.",
+    "usage_notes": "Use as a marinade, finishing sauce, or dip. Great for weeknight dinners, sandwiches, and bowl meals.",
+    "metadata": {
+      "heat_level": 2,
+      "is_vegan": true,
+      "allergens": [],
+      "size": "5oz"
+    },
+    "tags": ["bestseller", "everyday"]
+  }
+]

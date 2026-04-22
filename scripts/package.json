@@ -1,0 +1,19 @@
+{
+  "name": "livv-bots-scripts",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "ingest": "tsx src/ingest.ts",
+    "create-tenant": "tsx src/create-tenant.ts",
+    "bootstrap-admin": "tsx src/bootstrap-admin.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "widget",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "livv-bots-widget", "dev"],
+      "port": 5173,
+      "autoPort": true
+    },
+    {
+      "name": "dashboard",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "livv-bots-dashboard", "dev"],
+      "port": 3000,
+      "autoPort": true
+    }
+  ]
+}

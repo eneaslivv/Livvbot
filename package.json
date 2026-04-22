@@ -1,0 +1,16 @@
+{
+  "name": "livv-bots",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LIVV Studio — multi-tenant AI chatbot platform",
+  "workspaces": [
+    "widget",
+    "scripts"
+  ],
+  "scripts": {
+    "widget:dev": "pnpm --filter livv-bots-widget dev",
+    "widget:build": "pnpm --filter livv-bots-widget build",
+    "create-tenant": "pnpm --filter livv-bots-scripts create-tenant",
+    "ingest": "pnpm --filter livv-bots-scripts ingest"
+  }
+}

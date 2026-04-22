@@ -1,0 +1,190 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Theme tokens — Vercel-inspired, light + dark
+   ============================================================ */
+
+:root {
+  /* Surfaces */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-sunken: #fafafa;
+  --surface-raised: #ffffff;
+
+  /* Borders */
+  --border: #eaeaea;
+  --border-strong: #d4d4d4;
+  --border-subtle: #f0f0f0;
+
+  /* Text */
+  --ink: #0a0a0a;
+  --ink-soft: #404040;
+  --ink-muted: #737373;
+  --ink-faint: #a3a3a3;
+
+  /* Accent — inverts between themes: in light, black CTAs; in dark, white CTAs */
+  --accent: #0a0a0a;
+  --accent-fg: #ffffff;
+  --accent-soft: #fef3c7;
+  --accent-glow: #fde68a;
+
+  /* Status */
+  --success: #0070f3;
+  --success-bg: #eff6ff;
+  --success-fg: #1e40af;
+  --warn: #f59e0b;
+  --warn-bg: #fffbeb;
+  --warn-fg: #92400e;
+  --danger: #e11d48;
+  --danger-bg: #fef2f2;
+  --danger-fg: #991b1b;
+
+  --shadow-color: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  /* Surfaces — true black base with elevated grays */
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-sunken: #000000;
+  --surface-raised: #111111;
+
+  /* Borders */
+  --border: #1f1f1f;
+  --border-strong: #303030;
+  --border-subtle: #171717;
+
+  /* Text */
+  --ink: #ededed;
+  --ink-soft: #b4b4b4;
+  --ink-muted: #8c8c8c;
+  --ink-faint: #5c5c5c;
+
+  /* Accent */
+  --accent: #ededed;
+  --accent-fg: #0a0a0a;
+  --accent-soft: #1f1703;
+  --accent-glow: #3d2a05;
+
+  /* Status */
+  --success: #3b82f6;
+  --success-bg: #0c1e3d;
+  --success-fg: #93c5fd;
+  --warn: #f59e0b;
+  --warn-bg: #221303;
+  --warn-fg: #fcd34d;
+  --danger: #f43f5e;
+  --danger-bg: #2a0a12;
+  --danger-fg: #fecdd3;
+
+  --shadow-color: rgba(0, 0, 0, 0.45);
+
+  color-scheme: dark;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+}
+
+/* Prevent theme flash on initial render */
+html {
+  background: var(--bg);
+}
+
+/* Tabular numerals */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-faint);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Textures */
+.texture-grid {
+  background-image:
+    linear-gradient(to right, var(--border-subtle) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border-subtle) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.texture-dots {
+  background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+  background-size: 16px 16px;
+  background-position: 0 0;
+}
+
+/* Hero shimmer — uses accent in light, subtle glow in dark */
+.hero-shimmer {
+  background: linear-gradient(135deg, var(--surface) 0%, var(--accent-soft) 100%);
+}
+
+.dark .hero-shimmer {
+  background: linear-gradient(135deg, #0a0a0a 0%, #141007 100%);
+}
+
+/* Gradient border trick */
+.gradient-border {
+  position: relative;
+  background-clip: padding-box;
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--border-strong), var(--border) 40%, var(--accent-soft));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Message row animations */
+.msg-animate {
+  animation: msgFade 0.25s ease-out both;
+}
+@keyframes msgFade {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Dark mode form controls */
+.dark input,
+.dark textarea,
+.dark select {
+  color-scheme: dark;
+}
+.dark input[type="color"] {
+  background: var(--surface-raised);
+}
+
+/* Input base */
+input, textarea, select {
+  color: inherit;
+}
