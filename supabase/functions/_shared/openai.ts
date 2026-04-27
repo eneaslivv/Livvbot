@@ -26,8 +26,10 @@ export async function chatCompletion(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.6,
-      max_tokens: 500,
+      // Low temperature: this is a grounded RAG bot — creativity here just
+      // means inventing product details that aren't in the knowledge base.
+      temperature: 0.2,
+      max_tokens: 700,
     }),
   })
 

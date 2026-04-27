@@ -105,11 +105,17 @@ Deno.serve(async (req) => {
 
     const queryEmbedding = await createEmbedding(openaiKey, retrievalText)
 
+    // Detect "list / show me everything" style questions so we can pull more
+    // matches into the prompt — otherwise the model only sees the top 6 sauces
+    // out of 12 and confidently answers as if those are all that exist.
+    const listIntent = /\b(all|every|list|which|what (kinds|types|sauces|salsas|sabores|opciones|are there))\b|todas|todos|cu[áa]les|qu[eé] (salsas|tipos|sabores|opciones)|men[uú]/i.test(message)
+    const matchCount = listIntent ? 16 : 10
+
     const { data: knowledge, error: knowledgeError } = await supabase.rpc('match_knowledge', {
       p_tenant_id: tenant.id,
       p_query_embedding: queryEmbedding,
-      p_match_count: 6,
-      p_similarity_threshold: 0.25,
+      p_match_count: matchCount,
+      p_similarity_threshold: 0.2,
     })
     if (knowledgeError) console.error('match_knowledge error', knowledgeError)
 

@@ -6,9 +6,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const user = await getCurrentUser()
-  const tenants = await getUserTenants()
-  const admin = await isLivvAdmin()
+  const [user, tenants, admin] = await Promise.all([
+    getCurrentUser(),
+    getUserTenants(),
+    isLivvAdmin(),
+  ])
 
   return (
     <div className="flex min-h-screen">

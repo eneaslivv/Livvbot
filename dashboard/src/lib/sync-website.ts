@@ -41,6 +41,12 @@ const RELEVANT_PATH_PATTERNS = [
   /\/products\//i,
   /\/product\//i,
   /\/collections\/[^/]+\/products\//i,
+  // Collection / category landing pages (e.g. /collections/sauces) — these list
+  // many items at once and used to be filtered out, losing whole catalogs.
+  /\/collections\/[^/?#]+\/?($|[?#])/i,
+  /\/categor(y|ies)\//i,
+  /\/menu(\/|$)/i,
+  /\/shop(\/|$)/i,
   /\/pages\//i,
   /\/about/i,
   /\/faq/i,
@@ -197,8 +203,22 @@ async function extractFromPage(
   text: string
 ): Promise<{ products: ExtractedProduct[]; faqs: ExtractedFaq[] }> {
   // Hint the URL so GPT knows the page type (product page vs FAQ page vs about)
-  const isProductPath = /\/products?\//i.test(url)
+  const isSingleProductPath = /\/products?\/[^/?#]+/i.test(url) ||
+                              /\/collections\/[^/?#]+\/products\//i.test(url)
+  const isListingPath = /\/collections\/[^/?#]+\/?($|[?#])/i.test(url) ||
+                        /\/categor(y|ies)\//i.test(url) ||
+                        /\/menu(\/|$)/i.test(url) ||
+                        /\/shop(\/|$)/i.test(url) ||
+                        /\/products\/?$/i.test(url)
   const isFaqPath = /\/faq|\/shipping|\/returns|\/help/i.test(url)
+
+  const pageHint = isSingleProductPath
+    ? 'single product page'
+    : isListingPath
+      ? 'listing/collection page (multiple products on one page)'
+      : isFaqPath
+        ? 'policy/FAQ page'
+        : 'generic page (could be a single product, a list of products, or info)'
 
   const system = `You are extracting structured knowledge from a webpage.
 Return STRICT JSON matching:
@@ -208,17 +228,19 @@ Return STRICT JSON matching:
 }
 Rules:
 - Include only items genuinely present in the content. Do not invent.
-- If the page is a product page: extract ONE product with that name + description + usage notes.
-- If the page is a FAQ/shipping/returns page: extract each Q&A pair as a faq.
-- If the page is about/home: extract relevant FAQ-style facts about the company (policies, mission, contact).
+- If it's a single product page: extract that ONE product (name + description + usage notes).
+- If it's a listing/collection/category/menu page: extract EVERY distinct product, dish, sauce, drink or item named on the page — one entry per item, with whatever description, ingredients, or usage notes appear next to that item. Do NOT merge multiple items into one. Do NOT cap the count.
+- If it's a FAQ/shipping/returns page: extract each Q&A pair as a faq.
+- If it's an about/home page: extract relevant FAQ-style facts about the company (policies, mission, contact). If the page also lists products, extract those too.
+- For a generic page: infer the page type from the content. If you see a repeating pattern of item-name + short blurb (typical of menus, sauce lists, product grids), treat it as a listing and extract every item.
+- Each product's description should preserve the distinguishing details for THAT item (ingredients, flavor, heat level, pairing notes) — these are what users will ask about. 1-3 sentences each.
 - Leave the other array empty when not relevant.
-- Keep descriptions concise (1-3 sentences) but informative.
 - Return empty arrays { "products": [], "faqs": [] } if nothing is found.`
 
   const userContent =
     `URL: ${url}\n` +
-    `Hint: ${isProductPath ? 'product page' : isFaqPath ? 'policy/FAQ page' : 'generic page'}\n\n` +
-    text.slice(0, 12_000)
+    `Hint: ${pageHint}\n\n` +
+    text.slice(0, 20_000)
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -226,8 +248,8 @@ Rules:
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       response_format: { type: 'json_object' },
-      temperature: 0.2,
-      max_tokens: 1200,
+      temperature: 0.1,
+      max_tokens: 4000,
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: userContent },

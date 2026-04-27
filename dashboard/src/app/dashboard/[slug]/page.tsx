@@ -23,7 +23,6 @@ export default async function TenantOverview({ params }: { params: { slug: strin
   if (!tenant) notFound()
   const bc = tenant.brand_config ?? {}
 
-  // Single roundtrip for all counts
   const counts = await getTenantStats(tenant.id)
 
   const stats = [

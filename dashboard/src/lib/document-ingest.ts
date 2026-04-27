@@ -13,7 +13,7 @@ export interface IngestResult {
 }
 
 const MAX_CHUNK_CHARS = 1400
-const CHUNK_OVERLAP_CHARS = 200
+const CHUNK_OVERLAP_CHARS: number = 200
 
 // Very small splitter: prefer paragraph boundaries, fall back to sentence, then char-count.
 export function chunkText(text: string): string[] {
