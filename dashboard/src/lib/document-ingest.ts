@@ -89,9 +89,11 @@ export async function extractFromFile(file: File): Promise<{ text: string; sourc
   const name = file.name.toLowerCase()
 
   if (name.endsWith('.pdf')) {
-    // Use pdf-parse (CommonJS module, dynamic import)
+    // Pinned to pdf-parse@1.1.1. The package's index.js has a debug branch
+    // that tries to read a bundled test PDF at module-load time, which
+    // crashes inside Webpack/Next.js. Importing the inner file skips it.
     // @ts-ignore
-    const pdfParse = (await import('pdf-parse')).default as any
+    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default as any
     const data = await pdfParse(buffer)
     return { text: String(data.text ?? ''), sourceType: 'pdf' }
   }
