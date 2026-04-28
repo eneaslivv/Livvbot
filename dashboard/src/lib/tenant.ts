@@ -8,11 +8,16 @@ import { redirect } from 'next/navigation'
 
 export const getCurrentUser = cache(async () => {
   const supabase = createClient()
+  // getSession() reads the JWT from the cookie locally — no network round-trip.
+  // getUser() would re-validate against the auth server on EVERY page render
+  // (~150ms from AR), which is what was making dashboard navigation feel laggy.
+  // Per-tenant data queries still go through RLS, so an invalid token fails
+  // there safely.
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-  return user
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.user) redirect('/login')
+  return session.user
 })
 
 export const isLivvAdmin = cache(async () => {

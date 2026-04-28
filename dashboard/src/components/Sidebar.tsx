@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
+import { useState, useTransition } from 'react'
 import {
   LayoutDashboard,
   Settings,
@@ -15,6 +15,7 @@ import {
   Plus,
   Check,
   Home,
+  Loader2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -59,6 +60,56 @@ function initials(name: string) {
     .slice(0, 2)
     .join('')
     .toUpperCase()
+}
+
+function NavLink({
+  href,
+  active,
+  icon: Icon,
+  label,
+}: {
+  href: string
+  active: boolean
+  icon: any
+  label: string
+}) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+
+  // Intercept the click so we can wrap router.push in startTransition.
+  // That gives us isPending = true the instant the user clicks, which we use
+  // to render an inline spinner — so the click feels acknowledged immediately
+  // even while the new page's data is still loading.
+  function handleClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (active || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+    e.preventDefault()
+    startTransition(() => router.push(href))
+  }
+
+  return (
+    <Link
+      href={href}
+      prefetch={true}
+      onClick={handleClick}
+      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors group ${
+        active
+          ? 'bg-ink text-accent-fg'
+          : isPending
+            ? 'bg-surface-sunken text-ink'
+            : 'text-ink-soft hover:bg-surface-sunken hover:text-ink'
+      }`}
+    >
+      <Icon
+        className={`w-[15px] h-[15px] shrink-0 ${
+          active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
+        } transition-opacity`}
+      />
+      <span className="flex-1">{label}</span>
+      {isPending && (
+        <Loader2 className="w-3 h-3 shrink-0 animate-spin text-ink-muted" aria-label="loading" />
+      )}
+    </Link>
+  )
 }
 
 function TenantAvatar({ tenant, size = 'md' }: { tenant: Tenant; size?: 'sm' | 'md' }) {
@@ -216,25 +267,9 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
             {navItems.map((item) => {
               const href = `/dashboard/${currentSlug}${item.key}`
               const active = pathname === href
-              const Icon = item.icon
               return (
                 <li key={item.key}>
-                  <Link
-                    href={href}
-                    prefetch={true}
-                    className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors group ${
-                      active
-                        ? 'bg-ink text-accent-fg'
-                        : 'text-ink-soft hover:bg-surface-sunken hover:text-ink'
-                    }`}
-                  >
-                    <Icon
-                      className={`w-[15px] h-[15px] shrink-0 ${
-                        active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
-                      } transition-opacity`}
-                    />
-                    {item.label}
-                  </Link>
+                  <NavLink href={href} active={active} icon={item.icon} label={item.label} />
                 </li>
               )
             })}
