@@ -267,5 +267,3 @@ function StatPill({
     </div>
   )
 }
-
-export const dynamic = 'force-dynamic'

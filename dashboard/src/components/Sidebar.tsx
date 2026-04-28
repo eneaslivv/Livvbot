@@ -167,6 +167,7 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
                       <Link
                         key={t.id}
                         href={`/dashboard/${t.slug}`}
+                        prefetch={true}
                         onClick={() => setSwitcherOpen(false)}
                         className="flex items-center gap-2.5 mx-1 px-2 py-2 rounded-md hover:bg-surface-sunken text-sm"
                       >
@@ -220,6 +221,7 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
                 <li key={item.key}>
                   <Link
                     href={href}
+                    prefetch={true}
                     className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors group ${
                       active
                         ? 'bg-ink text-accent-fg'

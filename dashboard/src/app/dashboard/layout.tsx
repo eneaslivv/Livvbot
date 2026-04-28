@@ -19,5 +19,3 @@ export default async function DashboardLayout({
     </div>
   )
 }
-
-export const dynamic = 'force-dynamic'
