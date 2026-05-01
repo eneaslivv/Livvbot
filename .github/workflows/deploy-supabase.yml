@@ -29,15 +29,21 @@ jobs:
         id: changed
         run: |
           # On a push, compare against the previous commit. On manual runs, deploy
-          # everything under supabase/functions/<slug>/.
+          # everything under supabase/functions/<slug>/. If any file under
+          # supabase/functions/_shared/ changed, redeploy every function — they
+          # all import from there, so partial redeploys leave stale code live.
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             funcs=$(ls supabase/functions | grep -v '^_' || true)
           else
-            funcs=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
-              | grep '^supabase/functions/' \
-              | awk -F/ '{print $3}' \
-              | grep -v '^_' \
-              | sort -u || true)
+            changed=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^supabase/functions/' || true)
+            if echo "$changed" | grep -q '^supabase/functions/_'; then
+              funcs=$(ls supabase/functions | grep -v '^_' || true)
+            else
+              funcs=$(echo "$changed" \
+                | awk -F/ '{print $3}' \
+                | grep -v '^_' \
+                | sort -u || true)
+            fi
           fi
           echo "Will deploy:" $funcs
           echo "funcs<<EOF" >> $GITHUB_OUTPUT
