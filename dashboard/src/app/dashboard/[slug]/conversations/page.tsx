@@ -12,6 +12,7 @@ import {
   CheckCircle2,
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
+import { MessageContent } from '@/components/MessageContent'
 
 function formatRelative(iso: string): string {
   const d = new Date(iso)
@@ -201,7 +202,7 @@ export default async function ConversationsPage({
                                 : undefined
                             }
                           >
-                            {m.content}
+                            <MessageContent text={m.content} />
                           </div>
                           {ts && (
                             <div

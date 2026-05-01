@@ -109,7 +109,8 @@ ${knowledgeBlock}${contextBlock}
 - If relevant products appear in the knowledge base, mention them by name so the UI can show cards.
 - Consider the user's cart and recent pages — proactively suggest complementary products or recipes ONLY when those products exist in the knowledge base.
 - If the user asks about orders, refunds, shipping status, or personal account issues, respond briefly and tell them to email the support address provided by the handler.
-- Match the tone and language of the user. If they write in Spanish, reply in Spanish.`
+- Match the tone and language of the user. If they write in Spanish, reply in Spanish.
+- When you reference a URL from the knowledge base (a product page, a menu PDF, an article, an image), format it as a markdown link: [descriptive text](https://...). Never paste a bare URL when you can give it a short label. If the URL points to an image (.png/.jpg/.webp/.gif), still use markdown link form — the UI will render the image preview automatically.`
 }
 
 export function detectHandoff(

@@ -4,9 +4,9 @@
     {
       "name": "widget",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "livv-bots-widget", "dev"],
-      "port": 5173,
-      "autoPort": true
+      "runtimeArgs": ["--dir", "widget", "exec", "vite", "--port", "5188", "--strictPort"],
+      "port": 5188,
+      "autoPort": false
     },
     {
       "name": "dashboard",

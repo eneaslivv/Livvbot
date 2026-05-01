@@ -4,6 +4,7 @@ dist/
 .turbo/
 .vercel/
 out/
+*.tsbuildinfo
 
 # Env
 .env

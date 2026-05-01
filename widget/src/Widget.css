@@ -287,3 +287,34 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.livv-bot-link {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-word;
+}
+
+.livv-bot-link:hover {
+  opacity: 0.8;
+}
+
+.livv-bot-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.livv-bot-image-link {
+  display: block;
+}
+
+.livv-bot-image-link img {
+  max-height: 140px;
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  object-fit: cover;
+  display: block;
+}

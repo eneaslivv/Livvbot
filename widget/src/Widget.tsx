@@ -11,6 +11,7 @@ import {
   type CartContext,
   type AutoContext,
 } from './context'
+import { MessageContent } from './MessageContent'
 
 interface Props {
   config: WidgetConfig
@@ -176,7 +177,9 @@ export function Widget({ config }: Props) {
           <div className="livv-bot-messages" ref={scrollRef}>
             {messages.map((m, i) => (
               <div key={i}>
-                <div className={`livv-bot-msg livv-bot-msg-${m.role}`}>{m.content}</div>
+                <div className={`livv-bot-msg livv-bot-msg-${m.role}`}>
+                  <MessageContent text={m.content} />
+                </div>
                 {m.sources && m.sources.filter((s) => s.type === 'product').length > 0 && (
                   <ProductCards sources={m.sources.filter((s) => s.type === 'product')} />
                 )}

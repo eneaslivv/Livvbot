@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Send, Sparkles, RefreshCw, User, Bot, AlertCircle } from 'lucide-react'
+import { MessageContent } from './MessageContent'
 
 interface QuickAction {
   id: string
@@ -206,7 +207,7 @@ export function BotPreview({
                   }`}
                   style={isUser ? { background: primary } : undefined}
                 >
-                  {m.content}
+                  <MessageContent text={m.content} />
                 </div>
               </div>
             )
