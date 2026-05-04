@@ -19,6 +19,7 @@ async function updateSettings(slug: string, formData: FormData) {
   const accentColor = String(formData.get('accentColor') ?? '#d4a017')
   const greeting = String(formData.get('greeting') ?? '')
   const placeholder = String(formData.get('placeholder') ?? '')
+  const position = formData.get('position') === 'left' ? 'left' : 'right'
 
   const systemPrompt = String(formData.get('systemPrompt') ?? '')
   const openaiApiKey = String(formData.get('openaiApiKey') ?? '').trim()
@@ -56,6 +57,7 @@ async function updateSettings(slug: string, formData: FormData) {
       accentColor,
       greeting,
       placeholder,
+      position,
     },
     system_prompt: systemPrompt,
     openai_model: openaiModel,
@@ -166,6 +168,40 @@ export default async function SettingsPage({
                 name="placeholder"
                 defaultValue={bc.placeholder ?? ''}
               />
+              <div>
+                <label className="block text-xs font-medium text-ink-soft mb-1.5">
+                  Widget position
+                </label>
+                <div className="inline-flex border border-border rounded-md overflow-hidden bg-surface">
+                  <label className="cursor-pointer">
+                    <input
+                      type="radio"
+                      name="position"
+                      value="right"
+                      defaultChecked={(bc.position ?? 'right') !== 'left'}
+                      className="peer sr-only"
+                    />
+                    <span className="block px-3 py-1.5 text-xs peer-checked:bg-ink peer-checked:text-accent-fg text-ink-muted hover:text-ink transition-colors">
+                      Bottom-right
+                    </span>
+                  </label>
+                  <label className="cursor-pointer border-l border-border">
+                    <input
+                      type="radio"
+                      name="position"
+                      value="left"
+                      defaultChecked={bc.position === 'left'}
+                      className="peer sr-only"
+                    />
+                    <span className="block px-3 py-1.5 text-xs peer-checked:bg-ink peer-checked:text-accent-fg text-ink-muted hover:text-ink transition-colors">
+                      Bottom-left
+                    </span>
+                  </label>
+                </div>
+                <p className="text-[11px] text-ink-muted mt-1">
+                  Where the floating launcher appears on the customer's site.
+                </p>
+              </div>
             </div>
           </Card>
         </section>

@@ -15,6 +15,8 @@ export interface WidgetConfig {
     accentColor: string
     greeting: string
     placeholder: string
+    /** Which corner the widget anchors to. Defaults to 'right'. */
+    position?: 'right' | 'left'
   }
   quickActions?: QuickAction[]
   productContext?: {

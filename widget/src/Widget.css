@@ -1,9 +1,27 @@
 .livv-bot {
   position: fixed;
   bottom: 24px;
-  right: 24px;
   z-index: 999999;
   font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+}
+
+.livv-bot-right {
+  right: 24px;
+  left: auto;
+  align-items: flex-end;
+}
+
+.livv-bot-left {
+  left: 24px;
+  right: auto;
+  align-items: flex-start;
+}
+
+.livv-bot,
+.livv-bot-right,
+.livv-bot-left {
+  display: flex;
+  flex-direction: column;
 }
 
 .livv-bot-launcher {

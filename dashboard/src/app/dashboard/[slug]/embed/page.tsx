@@ -52,6 +52,7 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
             accentColor: ${JSON.stringify(bc.accentColor ?? '#d4a017')},
             greeting: ${JSON.stringify(bc.greeting ?? 'Hi! How can I help?')},
             placeholder: ${JSON.stringify(bc.placeholder ?? 'Ask me anything...')},
+            position: ${JSON.stringify(bc.position === 'left' ? 'left' : 'right')},
           },
           quickActions: ${quickActionsJson},
           productContext: productContext,

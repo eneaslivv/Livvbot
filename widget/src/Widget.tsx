@@ -128,7 +128,7 @@ export function Widget({ config }: Props) {
 
   return (
     <div
-      className="livv-bot"
+      className={`livv-bot livv-bot-${brand.position === 'left' ? 'left' : 'right'}`}
       style={
         {
           '--livv-primary': brand.primaryColor,
