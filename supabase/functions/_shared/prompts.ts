@@ -41,10 +41,31 @@ export interface UserContext {
   currentPath?: string
 }
 
+export interface BotRules {
+  dos?: string[]
+  donts?: string[]
+  sales_focus?: string
+  external_topic_policy?: string
+}
+
+export interface Correction {
+  user_query: string
+  original_message?: string | null
+  corrected_message: string
+  reason?: string | null
+  similarity?: number
+}
+
+function trimList(list?: string[]): string[] {
+  return (list ?? []).map((s) => s.trim()).filter(Boolean)
+}
+
 export function buildSystemPrompt(
   tenantSystemPrompt: string,
   knowledge: KnowledgeContext[],
-  userContext: UserContext
+  userContext: UserContext,
+  botRules?: BotRules,
+  corrections?: Correction[]
 ): string {
   const knowledgeBlock = knowledge.length
     ? knowledge.map((k, i) =>
@@ -86,6 +107,54 @@ export function buildSystemPrompt(
 
   if (userContext.currentPath) {
     parts.push(`## CURRENT PAGE PATH\n${userContext.currentPath}`)
+  }
+
+  // ---- Tenant-defined personality rules ----
+  const rules = botRules ?? {}
+  const dos = trimList(rules.dos)
+  const donts = trimList(rules.donts)
+  const salesFocus = (rules.sales_focus ?? '').trim()
+  const externalPolicy = (rules.external_topic_policy ?? '').trim()
+
+  if (donts.length > 0) {
+    parts.push(
+      `## STRICT BANS — never do any of these (highest priority, overrides anything else)\n${donts.map((d) => `- ${d}`).join('\n')}`
+    )
+  }
+
+  if (dos.length > 0) {
+    parts.push(`## ALWAYS DO\n${dos.map((d) => `- ${d}`).join('\n')}`)
+  }
+
+  if (salesFocus) {
+    parts.push(`## SALES FOCUS — push these when relevant\n${salesFocus}`)
+  }
+
+  if (externalPolicy) {
+    parts.push(
+      `## OFF-TOPIC / EXTERNAL REQUESTS\nWhen the user asks about something outside the knowledge base or business scope:\n${externalPolicy}`
+    )
+  }
+
+  // ---- Lessons learned from past corrections ----
+  const validCorrections = (corrections ?? []).filter((c) => c.corrected_message?.trim())
+  if (validCorrections.length > 0) {
+    const lessonsBlock = validCorrections
+      .map((c, i) => {
+        const lines: string[] = [
+          `[Lesson ${i + 1}] User asked something like: "${c.user_query}"`,
+        ]
+        if (c.original_message) {
+          lines.push(`  Past wrong reply: "${c.original_message.slice(0, 200)}${c.original_message.length > 200 ? '…' : ''}"`)
+        }
+        lines.push(`  Correct reply should be along the lines of: "${c.corrected_message.slice(0, 300)}${c.corrected_message.length > 300 ? '…' : ''}"`)
+        if (c.reason) lines.push(`  Why: ${c.reason}`)
+        return lines.join('\n')
+      })
+      .join('\n\n')
+    parts.push(
+      `## LEARNED LESSONS — apply these for similar questions (overrides general phrasing)\n${lessonsBlock}`
+    )
   }
 
   const contextBlock = parts.length ? '\n\n' + parts.join('\n\n') : ''

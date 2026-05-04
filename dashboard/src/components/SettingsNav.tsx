@@ -1,11 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Paintbrush, Cpu, MailQuestion, Globe2, Power, Zap, Link2 } from 'lucide-react'
+import { Paintbrush, Cpu, MailQuestion, Globe2, Power, Zap, Link2, Shield, GraduationCap } from 'lucide-react'
 
 const sections = [
   { id: 'branding', label: 'Branding', icon: Paintbrush },
   { id: 'ai', label: 'AI & prompt', icon: Cpu },
+  { id: 'personality', label: 'Personality', icon: Shield },
+  { id: 'training', label: 'Training', icon: GraduationCap },
   { id: 'website', label: 'Website', icon: Link2 },
   { id: 'quick-actions', label: 'Quick actions', icon: Zap },
   { id: 'handoff', label: 'Handoff', icon: MailQuestion },

@@ -6,6 +6,7 @@ import { Card, Field, TextArea, Button, Alert } from '@/components/ui'
 import { SettingsNav } from '@/components/SettingsNav'
 import { QuickActionsEditor } from '@/components/QuickActionsEditor'
 import { WebsiteSync } from '@/components/WebsiteSync'
+import { CorrectionsList } from '@/components/CorrectionsList'
 import { Save } from 'lucide-react'
 
 async function updateSettings(slug: string, formData: FormData) {
@@ -34,6 +35,19 @@ async function updateSettings(slug: string, formData: FormData) {
     if (Array.isArray(parsed)) quickActions = parsed
   } catch {}
 
+  // Bot personality rules — newline-separated lists for dos/donts, free text for the rest.
+  const splitLines = (raw: string) =>
+    raw
+      .split('\n')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  const botRules = {
+    dos: splitLines(String(formData.get('rulesDos') ?? '')),
+    donts: splitLines(String(formData.get('rulesDonts') ?? '')),
+    sales_focus: String(formData.get('rulesSalesFocus') ?? '').trim(),
+    external_topic_policy: String(formData.get('rulesExternalPolicy') ?? '').trim(),
+  }
+
   const payload: Record<string, any> = {
     brand_config: {
       botName,
@@ -57,6 +71,7 @@ async function updateSettings(slug: string, formData: FormData) {
     is_active: isActive,
     quick_actions: quickActions,
     website_url: websiteUrl,
+    bot_rules: botRules,
   }
 
   if (openaiApiKey && !openaiApiKey.startsWith('\u2022')) {
@@ -84,7 +99,17 @@ export default async function SettingsPage({
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
+  const supabase = createClient()
+  const { data: corrections } = await supabase
+    .from('corrections')
+    .select('id, user_query, original_message, corrected_message, reason, created_at')
+    .eq('tenant_id', tenant.id)
+    .eq('archived', false)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
   const bc = tenant.brand_config ?? {}
+  const rules = tenant.bot_rules ?? {}
   const maskedKey = tenant.openai_api_key_encrypted
     ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022' + String(tenant.openai_api_key_encrypted).slice(-4)
     : ''
@@ -181,6 +206,53 @@ export default async function SettingsPage({
                 />
               </div>
             </div>
+          </Card>
+        </section>
+
+        <section id="personality" className="scroll-mt-6">
+          <Card
+            title="Personality & rules"
+            description="Hard guardrails the bot must follow. Strict bans override everything else, including the system prompt."
+          >
+            <div className="space-y-4">
+              <TextArea
+                label="🚫 Things the bot must NEVER do"
+                name="rulesDonts"
+                defaultValue={(rules.donts ?? []).join('\n')}
+                rows={4}
+                help="One rule per line. Strongest guardrail — the bot will refuse rather than break these. e.g. 'Never invent prices', 'Never promise delivery in under 24h', 'Never speak about competitors'."
+              />
+              <TextArea
+                label="✅ Things the bot SHOULD always do"
+                name="rulesDos"
+                defaultValue={(rules.dos ?? []).join('\n')}
+                rows={4}
+                help="One rule per line. Reinforces priorities. e.g. 'Mention the product name when relevant', 'End with a call-to-action when the user shows buying intent'."
+              />
+              <TextArea
+                label="💰 Sales focus"
+                name="rulesSalesFocus"
+                defaultValue={rules.sales_focus ?? ''}
+                rows={3}
+                help="What to push when the user is open to buying. e.g. 'Prioritize the monthly promo and the XL combo before individual items.'"
+              />
+              <TextArea
+                label="🌍 Off-topic / external requests"
+                name="rulesExternalPolicy"
+                defaultValue={rules.external_topic_policy ?? ''}
+                rows={3}
+                help="How to handle questions outside the knowledge base. e.g. 'Answer briefly without inventing details, then redirect to our menu link.'"
+              />
+            </div>
+          </Card>
+        </section>
+
+        <section id="training" className="scroll-mt-6">
+          <Card
+            title="Training (learned lessons)"
+            description="When you click ✏️ Improve on a reply in Conversations, the correction lands here. The bot uses these as in-context examples for similar future questions."
+          >
+            <CorrectionsList slug={params.slug} corrections={(corrections ?? []) as any} />
           </Card>
         </section>
 

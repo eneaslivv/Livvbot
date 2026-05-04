@@ -119,10 +119,23 @@ Deno.serve(async (req) => {
     })
     if (knowledgeError) console.error('match_knowledge error', knowledgeError)
 
+    // Retrieve relevant past corrections (RLHF-lite). High threshold so we
+    // only inject lessons that actually match the current question, otherwise
+    // we'd bias the model toward unrelated past replies.
+    const { data: corrections, error: correctionsError } = await supabase.rpc('match_corrections', {
+      p_tenant_id: tenant.id,
+      p_query_embedding: queryEmbedding,
+      p_match_count: 3,
+      p_similarity_threshold: 0.7,
+    })
+    if (correctionsError) console.error('match_corrections error', correctionsError)
+
     const systemPrompt = buildSystemPrompt(
       tenant.system_prompt,
       knowledge ?? [],
-      { productContext, cartContext, journey, searchQuery, currentPath }
+      { productContext, cartContext, journey, searchQuery, currentPath },
+      tenant.bot_rules ?? {},
+      corrections ?? []
     )
 
     const messages: ChatMessage[] = [

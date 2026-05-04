@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { EmptyState } from '@/components/ui'
 import { MessageContent } from '@/components/MessageContent'
+import { MessageActions } from '@/components/MessageActions'
 
 function formatRelative(iso: string): string {
   const d = new Date(iso)
@@ -51,6 +52,24 @@ export default async function ConversationsPage({
     .limit(50)
 
   const list = conversations ?? []
+
+  // Load my own feedback for these conversations so we can pre-fill the thumbs.
+  const convIds = list.map((c: any) => c.id)
+  const { data: sessionData } = await supabase.auth.getSession()
+  const myUserId = sessionData.session?.user.id ?? null
+  let feedbackRows: any[] = []
+  if (convIds.length > 0 && myUserId) {
+    const { data } = await supabase
+      .from('message_feedback')
+      .select('conversation_id, message_index, rating')
+      .in('conversation_id', convIds)
+      .eq('created_by', myUserId)
+    feedbackRows = data ?? []
+  }
+  const feedbackMap = new Map<string, 1 | -1>()
+  for (const f of feedbackRows) {
+    feedbackMap.set(`${f.conversation_id}:${f.message_index}`, f.rating as 1 | -1)
+  }
   const bc = tenant.brand_config ?? {}
   const accent = bc.accentColor ?? '#d4a017'
   const primary = bc.primaryColor ?? '#111110'
@@ -153,10 +172,23 @@ export default async function ConversationsPage({
                   {msgs.map((m: any, i: number) => {
                     const isUser = m.role === 'user'
                     const ts = m.ts ? formatTime(m.ts) : ''
+                    // Find the user message that prompted this assistant reply,
+                    // walking back from the current index. Used by the Improve modal.
+                    let precedingUserMsg = ''
+                    if (!isUser) {
+                      for (let j = i - 1; j >= 0; j--) {
+                        if (msgs[j]?.role === 'user') {
+                          precedingUserMsg = String(msgs[j].content ?? '')
+                          break
+                        }
+                      }
+                    }
+                    const ratingKey = `${c.id}:${i}`
+                    const initialRating = feedbackMap.get(ratingKey) ?? 0
                     return (
                       <div
                         key={i}
-                        className={`flex gap-3 msg-animate ${
+                        className={`flex gap-3 msg-animate group/msg ${
                           isUser ? 'flex-row-reverse' : 'flex-row'
                         }`}
                         style={{ animationDelay: `${i * 30}ms` }}
@@ -212,6 +244,16 @@ export default async function ConversationsPage({
                             >
                               {ts}
                             </div>
+                          )}
+                          {!isUser && (
+                            <MessageActions
+                              slug={params.slug}
+                              conversationId={c.id}
+                              messageIndex={i}
+                              userQuery={precedingUserMsg}
+                              originalMessage={String(m.content ?? '')}
+                              initialRating={initialRating}
+                            />
                           )}
                         </div>
                       </div>
