@@ -17,33 +17,48 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
     .trim()
 
   const snippet = `<!-- LIVV Bots — ${bc.botName ?? tenant.name} for ${tenant.name} -->
-<script src="${widgetUrl}" defer></script>
+<script src="${widgetUrl}" async></script>
 <script>
-  window.addEventListener('load', function () {
-    // Product context is auto-detected for Shopify; widget also auto-captures
-    // cart, journey and search query. No extra config needed.
-    var productContext = window.ShopifyAnalytics?.meta?.product
-      ? {
-          handle: window.ShopifyAnalytics.meta.product.handle,
-          name: window.ShopifyAnalytics.meta.product.variants?.[0]?.name,
-        }
-      : undefined;
-
-    window.LivvBots.init({
-      tenantSlug: '${tenant.slug}',
-      apiUrl: '${supabaseUrl}',
-      brand: {
-        botName: ${JSON.stringify(bc.botName ?? 'Assistant')},
-        mascotUrl: ${JSON.stringify(bc.mascotUrl ?? '')},
-        primaryColor: ${JSON.stringify(bc.primaryColor ?? '#1a1a1a')},
-        accentColor: ${JSON.stringify(bc.accentColor ?? '#d4a017')},
-        greeting: ${JSON.stringify(bc.greeting ?? 'Hi! How can I help?')},
-        placeholder: ${JSON.stringify(bc.placeholder ?? 'Ask me anything...')},
-      },
-      quickActions: ${quickActionsJson},
-      productContext: productContext,
+  (function () {
+    // Robust loader: works whether this snippet runs before, during or after
+    // 'load', and whether the widget script was injected synchronously
+    // (defer ignored when added via JS by GTM / Framer / Webflow / etc.).
+    function domReady(cb) {
+      if (document.readyState === 'complete' || document.readyState === 'interactive') return cb();
+      document.addEventListener('DOMContentLoaded', cb, { once: true });
+    }
+    function whenWidget(cb, tries) {
+      if (typeof tries !== 'number') tries = 200; // ~10s @ 50ms
+      if (window.LivvBots && typeof window.LivvBots.init === 'function') return cb();
+      if (tries <= 0) {
+        console.error('[LivvBots] widget did not load from ${widgetUrl}. Check the Network tab and your CSP.');
+        return;
+      }
+      setTimeout(function () { whenWidget(cb, tries - 1); }, 50);
+    }
+    domReady(function () {
+      whenWidget(function () {
+        var sp = window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.product;
+        var productContext = sp
+          ? { handle: sp.handle, name: sp.variants && sp.variants[0] && sp.variants[0].name }
+          : undefined;
+        window.LivvBots.init({
+          tenantSlug: '${tenant.slug}',
+          apiUrl: '${supabaseUrl}',
+          brand: {
+            botName: ${JSON.stringify(bc.botName ?? 'Assistant')},
+            mascotUrl: ${JSON.stringify(bc.mascotUrl ?? '')},
+            primaryColor: ${JSON.stringify(bc.primaryColor ?? '#1a1a1a')},
+            accentColor: ${JSON.stringify(bc.accentColor ?? '#d4a017')},
+            greeting: ${JSON.stringify(bc.greeting ?? 'Hi! How can I help?')},
+            placeholder: ${JSON.stringify(bc.placeholder ?? 'Ask me anything...')},
+          },
+          quickActions: ${quickActionsJson},
+          productContext: productContext,
+        });
+      });
     });
-  });
+  })();
 </script>`
 
   const hasKey = Boolean(tenant.openai_api_key_encrypted)
