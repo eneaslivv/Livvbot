@@ -20,6 +20,10 @@ jobs:
       SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need at least 2 commits so `git diff PREV CURRENT` works in the
+          # detect-changed-functions step. Default is 1 (just the head).
+          fetch-depth: 0
 
       - uses: supabase/setup-cli@v1
         with:
