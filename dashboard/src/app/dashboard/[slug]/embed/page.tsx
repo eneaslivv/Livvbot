@@ -12,6 +12,16 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
   const widgetUrl = `${supabaseUrl}/storage/v1/object/public/widgets/widget.iife.js`
   const bc = tenant.brand_config ?? {}
 
+  // Resolve the product URL pattern. Priority: explicit override → derived
+  // from website_url (Shopify-style /products/<handle>) → undefined (widget
+  // falls back to a relative link).
+  const productUrlTemplate: string | undefined =
+    typeof bc.productUrlTemplate === 'string' && bc.productUrlTemplate.trim()
+      ? bc.productUrlTemplate.trim()
+      : tenant.website_url
+        ? `${String(tenant.website_url).replace(/\/+$/, '')}/products/{handle}`
+        : undefined
+
   const quickActionsJson = JSON.stringify(tenant.quick_actions ?? [], null, 8)
     .replace(/^/gm, '      ')
     .trim()
@@ -52,7 +62,11 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
             accentColor: ${JSON.stringify(bc.accentColor ?? '#d4a017')},
             greeting: ${JSON.stringify(bc.greeting ?? 'Hi! How can I help?')},
             placeholder: ${JSON.stringify(bc.placeholder ?? 'Ask me anything...')},
-            position: ${JSON.stringify(bc.position === 'left' ? 'left' : 'right')},
+            position: ${JSON.stringify(bc.position === 'left' ? 'left' : 'right')},${
+              productUrlTemplate
+                ? `\n            productUrlTemplate: ${JSON.stringify(productUrlTemplate)},`
+                : ''
+            }
           },
           quickActions: ${quickActionsJson},
           productContext: productContext,

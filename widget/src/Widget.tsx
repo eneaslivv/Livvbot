@@ -181,7 +181,10 @@ export function Widget({ config }: Props) {
                   <MessageContent text={m.content} />
                 </div>
                 {m.sources && m.sources.filter((s) => s.type === 'product').length > 0 && (
-                  <ProductCards sources={m.sources.filter((s) => s.type === 'product')} />
+                  <ProductCards
+                    sources={m.sources.filter((s) => s.type === 'product')}
+                    urlTemplate={brand.productUrlTemplate}
+                  />
                 )}
               </div>
             ))}
@@ -228,23 +231,42 @@ export function Widget({ config }: Props) {
   )
 }
 
-function ProductCards({ sources }: { sources: SourceRef[] }) {
+function ProductCards({
+  sources,
+  urlTemplate,
+}: {
+  sources: SourceRef[]
+  urlTemplate?: string
+}) {
+  function buildUrl(handle?: string): string {
+    if (!handle) return '#'
+    if (urlTemplate && urlTemplate.includes('{handle}')) {
+      return urlTemplate.replace('{handle}', encodeURIComponent(handle))
+    }
+    // Fallback: relative path. Works on Shopify-style stores at root.
+    return `/products/${encodeURIComponent(handle)}`
+  }
   return (
     <div className="livv-bot-cards">
-      {sources.map((s, i) => (
-        <a
-          key={i}
-          className="livv-bot-card"
-          href={s.handle ? `/products/${s.handle}` : '#'}
-          target="_top"
-        >
-          <div className="livv-bot-card-title">{s.title}</div>
-          {s.description && (
-            <div className="livv-bot-card-desc">{s.description.slice(0, 90)}…</div>
-          )}
-          <div className="livv-bot-card-cta">View product →</div>
-        </a>
-      ))}
+      {sources.map((s, i) => {
+        const href = buildUrl(s.handle)
+        const isExternal = href.startsWith('http')
+        return (
+          <a
+            key={i}
+            className="livv-bot-card"
+            href={href}
+            target={isExternal ? '_blank' : '_top'}
+            rel={isExternal ? 'noopener noreferrer' : undefined}
+          >
+            <div className="livv-bot-card-title">{s.title}</div>
+            {s.description && (
+              <div className="livv-bot-card-desc">{s.description.slice(0, 90)}…</div>
+            )}
+            <div className="livv-bot-card-cta">View product →</div>
+          </a>
+        )
+      })}
     </div>
   )
 }

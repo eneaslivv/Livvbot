@@ -20,6 +20,7 @@ async function updateSettings(slug: string, formData: FormData) {
   const greeting = String(formData.get('greeting') ?? '')
   const placeholder = String(formData.get('placeholder') ?? '')
   const position = formData.get('position') === 'left' ? 'left' : 'right'
+  const productUrlTemplate = String(formData.get('productUrlTemplate') ?? '').trim()
 
   const systemPrompt = String(formData.get('systemPrompt') ?? '')
   const openaiApiKey = String(formData.get('openaiApiKey') ?? '').trim()
@@ -58,6 +59,7 @@ async function updateSettings(slug: string, formData: FormData) {
       greeting,
       placeholder,
       position,
+      productUrlTemplate: productUrlTemplate || undefined,
     },
     system_prompt: systemPrompt,
     openai_model: openaiModel,
@@ -305,6 +307,17 @@ export default async function SettingsPage({
                 defaultValue={tenant.website_url ?? ''}
                 placeholder="https://crewful.com"
                 help="Used by the Sync button below to discover and ingest content. The site must expose a sitemap.xml or link to one from robots.txt."
+              />
+              <Field
+                label="Product URL pattern"
+                name="productUrlTemplate"
+                defaultValue={bc.productUrlTemplate ?? ''}
+                placeholder={
+                  tenant.website_url
+                    ? `${String(tenant.website_url).replace(/\/+$/, '')}/products/{handle}`
+                    : 'https://yoursite.com/products/{handle}'
+                }
+                help="Where the bot's product cards link to. Use {handle} as the slug placeholder. Leave blank to default to {websiteUrl}/products/{handle} (Shopify-style)."
               />
               <div className="pt-2 border-t border-border-subtle">
                 <WebsiteSync

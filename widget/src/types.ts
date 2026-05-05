@@ -17,6 +17,12 @@ export interface WidgetConfig {
     placeholder: string
     /** Which corner the widget anchors to. Defaults to 'right'. */
     position?: 'right' | 'left'
+    /**
+     * URL template used by product cards. `{handle}` is replaced with the
+     * product's slug. Example: "https://krufood.com/products/{handle}".
+     * If absent, the card falls back to a relative `/products/{handle}` link.
+     */
+    productUrlTemplate?: string
   }
   quickActions?: QuickAction[]
   productContext?: {
