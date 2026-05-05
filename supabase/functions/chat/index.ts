@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { buildCorsHeaders } from '../_shared/cors.ts'
+import { buildCorsHeaders, isOriginAllowed } from '../_shared/cors.ts'
 import {
   chatCompletion,
   createEmbedding,
@@ -56,9 +56,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'tenant not found' }, 404, origin, ['*'])
     }
 
-    if (origin && !tenant.allowed_origins.some((o: string) =>
-      origin === o || origin.endsWith(`.${o.replace(/^https?:\/\//, '')}`)
-    )) {
+    if (!isOriginAllowed(origin, tenant.allowed_origins)) {
       return jsonResponse({ error: 'origin not allowed' }, 403, origin, tenant.allowed_origins)
     }
 

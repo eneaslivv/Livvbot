@@ -12,6 +12,29 @@ async function createTenant(formData: FormData) {
 
   if (!slug || !name) return
 
+  // Pre-populate the major no-code / hosting platforms so the embed
+  // snippet works the moment a tenant pastes it on Shopify, Lovable,
+  // Webflow, Framer, Vercel preview, etc. Bare hosts also cover
+  // subdomains via the chat function's matcher.
+  const defaultAllowedOrigins = [
+    'lovable.app',
+    'lovable.dev',
+    'myshopify.com',
+    'shopify.com',
+    'shopifypreview.com',
+    'webflow.io',
+    'framer.app',
+    'framer.website',
+    'vercel.app',
+    'netlify.app',
+    'wixsite.com',
+    'wix.com',
+    'squarespace.com',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+  ]
+
   const supabase = createClient()
   const { data, error } = await supabase
     .from('tenants')
@@ -26,6 +49,7 @@ async function createTenant(formData: FormData) {
         placeholder: 'Ask me anything...',
       },
       system_prompt: `You are ${botName || name}, the assistant for ${name}. Be helpful, concise, and honest. Never invent facts.`,
+      allowed_origins: defaultAllowedOrigins,
     })
     .select()
     .single()

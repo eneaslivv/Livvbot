@@ -355,14 +355,18 @@ export default async function SettingsPage({
         <section id="cors" className="scroll-mt-6">
           <Card
             title="Allowed origins (CORS)"
-            description="The chat endpoint will only respond to requests from these origins."
+            description="The chat endpoint will only respond to requests from these origins. New tenants come pre-loaded with the common hosting platforms (Shopify, Lovable, Webflow, Framer, Vercel, Netlify, Wix, Squarespace) so the embed works out of the box."
           >
             <TextArea
               label="Origins"
               name="allowedOrigins"
               defaultValue={(tenant.allowed_origins ?? []).join(', ')}
-              rows={2}
-              help={'Comma-separated. e.g. "https://crewful.com, https://www.crewful.com"'}
+              rows={4}
+              help={
+                'Comma-separated. Three syntaxes: full URL ("https://kru.com"), ' +
+                'bare host ("kru.com" — also matches subdomains like "www.kru.com"), ' +
+                'or wildcard ("*.lovable.app" — only subdomains). Use "*" to disable the check entirely.'
+              }
             />
           </Card>
         </section>
