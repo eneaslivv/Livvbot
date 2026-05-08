@@ -83,7 +83,7 @@ export function buildCorsHeaders(
   const allowed = isOriginAllowed(origin, allowedOrigins)
   return {
     'Access-Control-Allow-Origin': allowed && origin ? origin : (allowedOrigins[0] ?? '*'),
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Tenant-Slug',
     'Access-Control-Max-Age': '86400',
   }

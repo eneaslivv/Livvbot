@@ -8,13 +8,19 @@ export interface QuickAction {
 export interface WidgetConfig {
   tenantSlug: string
   apiUrl: string
-  brand: {
-    botName: string
+  /**
+   * Optional local overrides. The widget fetches the canonical brand
+   * config from the server on init, so the customer's snippet normally
+   * only needs `tenantSlug` and `apiUrl`. Anything specified here wins
+   * over what the server returns.
+   */
+  brand?: {
+    botName?: string
     mascotUrl?: string
-    primaryColor: string
-    accentColor: string
-    greeting: string
-    placeholder: string
+    primaryColor?: string
+    accentColor?: string
+    greeting?: string
+    placeholder?: string
     /** Which corner the widget anchors to. Defaults to 'right'. */
     position?: 'right' | 'left'
     /**

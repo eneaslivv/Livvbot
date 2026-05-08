@@ -40,6 +40,42 @@ export async function sendMessage(
   return res.json()
 }
 
+export interface ServerConfig {
+  brand?: {
+    botName?: string
+    mascotUrl?: string
+    primaryColor?: string
+    accentColor?: string
+    greeting?: string
+    placeholder?: string
+    position?: 'right' | 'left'
+    productUrlTemplate?: string
+  }
+  quickActions?: { id: string; label: string; prompt: string; page_match?: string }[]
+}
+
+/**
+ * Fetch the live brand config from the server. Lets the widget pick up
+ * Settings changes (position, colors, greeting, quick actions) without
+ * the customer having to re-paste the embed snippet.
+ */
+export async function fetchServerConfig(
+  apiUrl: string,
+  tenantSlug: string
+): Promise<ServerConfig | null> {
+  try {
+    // No custom headers → "simple" CORS request, browser skips preflight.
+    const res = await fetch(
+      `${apiUrl}/functions/v1/widget-config?tenant=${encodeURIComponent(tenantSlug)}`,
+      { method: 'GET' }
+    )
+    if (!res.ok) return null
+    return (await res.json()) as ServerConfig
+  } catch {
+    return null
+  }
+}
+
 export function getOrCreateSessionId(): string {
   const KEY = 'livv-bot-session-id'
   let id = sessionStorage.getItem(KEY)

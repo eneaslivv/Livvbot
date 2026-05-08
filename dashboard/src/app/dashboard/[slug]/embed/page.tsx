@@ -12,27 +12,14 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
   const widgetUrl = `${supabaseUrl}/storage/v1/object/public/widgets/widget.iife.js`
   const bc = tenant.brand_config ?? {}
 
-  // Resolve the product URL pattern. Priority: explicit override → derived
-  // from website_url (Shopify-style /products/<handle>) → undefined (widget
-  // falls back to a relative link).
-  const productUrlTemplate: string | undefined =
-    typeof bc.productUrlTemplate === 'string' && bc.productUrlTemplate.trim()
-      ? bc.productUrlTemplate.trim()
-      : tenant.website_url
-        ? `${String(tenant.website_url).replace(/\/+$/, '')}/products/{handle}`
-        : undefined
-
-  const quickActionsJson = JSON.stringify(tenant.quick_actions ?? [], null, 8)
-    .replace(/^/gm, '      ')
-    .trim()
-
+  // The widget pulls brand config + quick actions from the server on init,
+  // so the snippet only needs the slug and API URL. Anything you change in
+  // Settings (position, colors, greeting, quick actions) propagates the
+  // next time a visitor loads your page — no need to re-paste the embed.
   const snippet = `<!-- LIVV Bots — ${bc.botName ?? tenant.name} for ${tenant.name} -->
 <script src="${widgetUrl}" async></script>
 <script>
   (function () {
-    // Robust loader: works whether this snippet runs before, during or after
-    // 'load', and whether the widget script was injected synchronously
-    // (defer ignored when added via JS by GTM / Framer / Webflow / etc.).
     function domReady(cb) {
       if (document.readyState === 'complete' || document.readyState === 'interactive') return cb();
       document.addEventListener('DOMContentLoaded', cb, { once: true });
@@ -41,7 +28,7 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
       if (typeof tries !== 'number') tries = 200; // ~10s @ 50ms
       if (window.LivvBots && typeof window.LivvBots.init === 'function') return cb();
       if (tries <= 0) {
-        console.error('[LivvBots] widget did not load from ${widgetUrl}. Check the Network tab and your CSP.');
+        console.error('[LivvBots] widget did not load from ${widgetUrl}. Check Network tab + CSP.');
         return;
       }
       setTimeout(function () { whenWidget(cb, tries - 1); }, 50);
@@ -55,20 +42,6 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
         window.LivvBots.init({
           tenantSlug: '${tenant.slug}',
           apiUrl: '${supabaseUrl}',
-          brand: {
-            botName: ${JSON.stringify(bc.botName ?? 'Assistant')},
-            mascotUrl: ${JSON.stringify(bc.mascotUrl ?? '')},
-            primaryColor: ${JSON.stringify(bc.primaryColor ?? '#1a1a1a')},
-            accentColor: ${JSON.stringify(bc.accentColor ?? '#d4a017')},
-            greeting: ${JSON.stringify(bc.greeting ?? 'Hi! How can I help?')},
-            placeholder: ${JSON.stringify(bc.placeholder ?? 'Ask me anything...')},
-            position: ${JSON.stringify(bc.position === 'left' ? 'left' : 'right')},${
-              productUrlTemplate
-                ? `\n            productUrlTemplate: ${JSON.stringify(productUrlTemplate)},`
-                : ''
-            }
-          },
-          quickActions: ${quickActionsJson},
           productContext: productContext,
         });
       });

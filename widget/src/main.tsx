@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import { Widget } from './Widget'
 import type { WidgetConfig } from './types'
+import { fetchServerConfig } from './api'
 // eslint-disable-next-line import/no-unresolved
 import widgetCss from './Widget.css?inline'
 
@@ -22,8 +23,32 @@ function injectCss() {
   document.head.appendChild(style)
 }
 
-function init(config: WidgetConfig) {
+const SAFE_BRAND_DEFAULTS = {
+  botName: 'Assistant',
+  mascotUrl: '',
+  primaryColor: '#1a1a1a',
+  accentColor: '#d4a017',
+  greeting: 'Hi! How can I help?',
+  placeholder: 'Ask me anything...',
+}
+
+async function init(config: WidgetConfig) {
   injectCss()
+
+  // Pull live config from the server. Whatever the snippet hard-codes wins
+  // for things the customer wants to override locally (rare); everything
+  // else comes from the dashboard so Settings changes just work.
+  const remote = await fetchServerConfig(config.apiUrl, config.tenantSlug)
+  const merged: WidgetConfig = {
+    ...config,
+    brand: {
+      ...SAFE_BRAND_DEFAULTS,
+      ...(remote?.brand ?? {}),
+      ...(config.brand ?? {}),
+    },
+    quickActions: config.quickActions ?? remote?.quickActions ?? [],
+  }
+
   let container = document.getElementById('livv-bots-root')
   if (!container) {
     container = document.createElement('div')
@@ -32,7 +57,7 @@ function init(config: WidgetConfig) {
   }
 
   const root = createRoot(container)
-  root.render(<Widget config={config} />)
+  root.render(<Widget config={merged} />)
 }
 
 window.LivvBots = { init }
