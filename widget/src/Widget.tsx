@@ -74,7 +74,26 @@ export function Widget({ config }: Props) {
   }, [isOpen])
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
+    if (!scrollRef.current || messages.length === 0) return
+    const last = messages[messages.length - 1]
+    // For a new assistant reply, anchor the *top* of that message — long
+    // answers + product cards used to push the actual text off-screen.
+    // For the user's own message, snap to bottom (typed message stays
+    // visible while they wait for the reply).
+    if (last.role === 'assistant') {
+      const nodes = scrollRef.current.querySelectorAll('.livv-bot-msg-assistant, [data-livv-msg-index]')
+      const target = nodes[nodes.length - 1] as HTMLElement | undefined
+      if (target) {
+        // Manual scroll instead of scrollIntoView() so we don't move the
+        // parent page when the widget is inside an iframe.
+        const containerRect = scrollRef.current.getBoundingClientRect()
+        const targetRect = target.getBoundingClientRect()
+        const delta = targetRect.top - containerRect.top - 8 // 8px breathing room
+        scrollRef.current.scrollBy({ top: delta, behavior: 'smooth' })
+        return
+      }
+    }
+    scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages])
 
   async function sendPrompt(text: string) {
