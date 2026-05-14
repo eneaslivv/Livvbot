@@ -48,8 +48,9 @@ export interface ChatMessage {
 }
 
 export interface SourceRef {
-  type: 'product' | 'recipe' | 'faq'
+  type: 'product' | 'recipe' | 'faq' | 'document'
   title: string
   handle?: string
   description?: string
+  image_url?: string
 }

@@ -151,13 +151,14 @@ Deno.serve(async (req) => {
       const ids = productSources.map((p: any) => p.source_id)
       const { data: products } = await supabase
         .from('products')
-        .select('id, handle, name, description')
+        .select('id, handle, name, description, image_url')
         .in('id', ids)
       enrichedSources = (products ?? []).map((p: any) => ({
         type: 'product',
         title: p.name,
         handle: p.handle,
         description: p.description,
+        image_url: p.image_url,
       }))
     }
 
