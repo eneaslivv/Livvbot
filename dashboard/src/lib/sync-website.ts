@@ -295,9 +295,52 @@ function slugify(s: string): string {
   return s
     .toLowerCase()
     .trim()
+    // Strip everything that isn't a letter, digit, or whitespace.
+    // Doing this BEFORE collapsing whitespace prevents "Salt & Pepper"
+    // from becoming "salt--pepper" (the old order left two spaces
+    // around the dropped "&" which then turned into two dashes).
+    .replace(/[^a-z0-9\s-]/g, ' ')
     .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 80)
+}
+
+// Heuristic: a homepage that returns under ~3 KB of HTML with almost no
+// extractable text is almost certainly a client-rendered SPA (Lovable,
+// Framer, Next.js with no SSR, etc.). Trying to crawl those is pointless —
+// every URL returns the same shell — and historically the LLM extractor
+// would happily invent products from URL patterns alone.
+async function looksLikeSpaShell(websiteUrl: string): Promise<boolean> {
+  const html = await fetchText(websiteUrl, 8000)
+  if (!html) return false
+  if (html.length > 8_000) return false
+  const text = htmlToText(html)
+  return text.length < 250
+}
+
+// Validate a product URL actually returns real content, not the SPA shell
+// or a "not found" page that 200s. We compare against a baseline (the
+// homepage byte length) and require the page to be sizeably different.
+async function urlReturnsRealContent(
+  url: string,
+  baselineLength: number
+): Promise<boolean> {
+  try {
+    const html = await fetchText(url, 8000)
+    if (!html) return false
+    // Must be substantially bigger than the empty shell OR substantially
+    // different content (we approximate with length difference).
+    if (html.length < 3_000) return false
+    if (Math.abs(html.length - baselineLength) < 200 && html.length < 10_000) {
+      // Page is suspiciously close in size to the homepage → likely the
+      // same shell HTML served for an unknown route.
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
@@ -339,6 +382,24 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
   }
 
   const apiKey = tenant.openai_api_key_encrypted as string
+
+  // 0. Refuse to sync client-rendered SPAs. Crawling them blindly is how the
+  //    DB got 25 invented products in May (handles like 'kru-sauce-fiery'
+  //    that don't exist on the storefront). The user has to switch to a
+  //    server-rendered URL or use a different data source.
+  if (await looksLikeSpaShell(tenant.website_url)) {
+    result.error =
+      `${tenant.website_url} looks like a client-rendered SPA (the HTML is an empty shell). ` +
+      `The crawler can't read content from those — every URL returns the same page. ` +
+      `Either point website_url at a server-rendered version of the site (e.g. the Shopify backend, ` +
+      `or a sitemap with real HTML), or skip the auto-sync and add products manually.`
+    result.durationMs = Date.now() - start
+    return result
+  }
+
+  // Cache the homepage byte length to use as a baseline for URL validation.
+  const homepageHtml = await fetchText(tenant.website_url, 8000)
+  const homepageLen = homepageHtml?.length ?? 0
 
   // 1. Discover sitemap URLs
   const allUrls = await discoverSitemapUrls(tenant.website_url)
@@ -398,6 +459,35 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
       productByHandle.set(handle, { ...p, handle })
     }
   }
+
+  // Validate handles against the live storefront. We try the conventional
+  // /products/<handle> path and confirm it returns real content (not the
+  // SPA shell, not a 404). Anything that fails validation is dropped — we'd
+  // rather skip a product than insert a row that points to a dead URL.
+  const baseUrl = new URL(normalizeUrl(tenant.website_url)).origin
+  const validatedByHandle = new Map<string, (typeof allProducts)[number]>()
+  const rejectedSamples: string[] = []
+  await mapWithConcurrency(
+    Array.from(productByHandle.entries()),
+    MAX_CONCURRENCY,
+    async ([handle, p]) => {
+      const candidate = `${baseUrl}/products/${handle}`
+      if (await urlReturnsRealContent(candidate, homepageLen)) {
+        validatedByHandle.set(handle, p)
+      } else if (rejectedSamples.length < 5) {
+        rejectedSamples.push(handle)
+      }
+    }
+  )
+
+  if (rejectedSamples.length > 0) {
+    result.errors.push(
+      `Skipped ${productByHandle.size - validatedByHandle.size} products with URLs that don't resolve to a real page (sample: ${rejectedSamples.join(', ')}).`
+    )
+  }
+  // Replace the working set with only the validated entries.
+  productByHandle.clear()
+  for (const [h, p] of validatedByHandle) productByHandle.set(h, p)
 
   // Load current hashes to decide insert vs update vs skip
   type ExistingRow = { id: string; handle?: string; question?: string; content_hash: string | null }
