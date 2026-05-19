@@ -337,20 +337,25 @@ function ProductCards({
   urlTemplate?: string
   brandName: string
 }) {
-  // Only treat a template as usable if it includes the {handle} placeholder
-  // AND is absolute. Otherwise we'd render a CTA that links to a broken page.
+  // Template is usable only if it's absolute and at least includes {handle}.
   const hasUsableTemplate = Boolean(
     urlTemplate && urlTemplate.includes('{handle}') && /^https?:\/\//i.test(urlTemplate)
   )
+  const needsCategory = Boolean(urlTemplate && urlTemplate.includes('{category}'))
 
-  function buildUrl(handle: string): string {
-    return urlTemplate!.replace('{handle}', encodeURIComponent(handle))
+  function buildUrl(s: SourceRef): string {
+    return urlTemplate!
+      .replace('{handle}', encodeURIComponent(s.handle!))
+      .replace('{category}', encodeURIComponent(s.category ?? ''))
   }
 
   return (
     <div className="livv-bot-cards">
       {sources.map((s, i) => {
-        const canLink = hasUsableTemplate && Boolean(s.handle)
+        const canLink =
+          hasUsableTemplate &&
+          Boolean(s.handle) &&
+          (!needsCategory || Boolean(s.category))
         const inner = (
           <>
             <div className="livv-bot-card-media">
@@ -380,7 +385,7 @@ function ProductCards({
             <a
               key={i}
               className="livv-bot-card"
-              href={buildUrl(s.handle!)}
+              href={buildUrl(s)}
               target="_blank"
               rel="noopener noreferrer"
             >

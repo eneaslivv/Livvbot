@@ -51,6 +51,7 @@ export interface SourceRef {
   type: 'product' | 'recipe' | 'faq' | 'document'
   title: string
   handle?: string
+  category?: string
   description?: string
   image_url?: string
 }

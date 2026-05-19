@@ -164,7 +164,7 @@ Deno.serve(async (req) => {
       const ids = productSources.map((p: any) => p.source_id)
       const { data: products } = await supabase
         .from('products')
-        .select('id, handle, name, description, image_url')
+        .select('id, handle, name, description, image_url, category')
         .in('id', ids)
       // Preserve the similarity order from match_knowledge.
       const byId = new Map((products ?? []).map((p: any) => [p.id, p]))
@@ -175,6 +175,7 @@ Deno.serve(async (req) => {
           type: 'product',
           title: p.name,
           handle: p.handle,
+          category: p.category,
           description: p.description,
           image_url: p.image_url,
         }))
