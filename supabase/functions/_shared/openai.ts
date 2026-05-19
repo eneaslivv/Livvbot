@@ -15,7 +15,8 @@ export interface ChatCompletionResponse {
 export async function chatCompletion(
   apiKey: string,
   model: string,
-  messages: ChatMessage[]
+  messages: ChatMessage[],
+  options: { maxTokens?: number } = {}
 ): Promise<ChatCompletionResponse> {
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -29,7 +30,9 @@ export async function chatCompletion(
       // Low temperature: this is a grounded RAG bot — creativity here just
       // means inventing product details that aren't in the knowledge base.
       temperature: 0.2,
-      max_tokens: 700,
+      // Tighter default so the model can't drift into 500-word essays.
+      // Caller can raise this for "list everything" intents.
+      max_tokens: options.maxTokens ?? 320,
     }),
   })
 

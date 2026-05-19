@@ -142,10 +142,23 @@ Deno.serve(async (req) => {
       { role: 'user', content: message },
     ]
 
-    const completion = await chatCompletion(openaiKey, tenant.openai_model, messages)
+    // Tighter token budget for casual answers; allow more room when the
+    // user explicitly asked for a list so we don't truncate the lineup.
+    const completion = await chatCompletion(
+      openaiKey,
+      tenant.openai_model,
+      messages,
+      { maxTokens: listIntent ? 600 : 280 }
+    )
 
-    // Enrich sources with product details for UI cards
-    const productSources = (knowledge ?? []).filter((k: any) => k.source_type === 'product')
+    // Enrich sources with product details for UI cards. Cap product cards
+    // to keep the chat scannable — the LLM only mentions ~2 products in
+    // a casual reply anyway, but `match_knowledge` can pull more. For
+    // explicit list questions we keep up to 6.
+    const productLimit = listIntent ? 6 : 3
+    const productSources = (knowledge ?? [])
+      .filter((k: any) => k.source_type === 'product')
+      .slice(0, productLimit)
     let enrichedSources: any[] = []
     if (productSources.length > 0) {
       const ids = productSources.map((p: any) => p.source_id)
@@ -153,19 +166,26 @@ Deno.serve(async (req) => {
         .from('products')
         .select('id, handle, name, description, image_url')
         .in('id', ids)
-      enrichedSources = (products ?? []).map((p: any) => ({
-        type: 'product',
-        title: p.name,
-        handle: p.handle,
-        description: p.description,
-        image_url: p.image_url,
-      }))
+      // Preserve the similarity order from match_knowledge.
+      const byId = new Map((products ?? []).map((p: any) => [p.id, p]))
+      enrichedSources = productSources
+        .map((s: any) => byId.get(s.source_id))
+        .filter(Boolean)
+        .map((p: any) => ({
+          type: 'product',
+          title: p.name,
+          handle: p.handle,
+          description: p.description,
+          image_url: p.image_url,
+        }))
     }
 
-    // Add non-product sources as plain references
+    // Add non-product sources as plain references (capped at 3 too).
+    let nonProductCount = 0
     for (const k of (knowledge ?? [])) {
-      if (k.source_type !== 'product') {
+      if (k.source_type !== 'product' && nonProductCount < 3) {
         enrichedSources.push({ type: k.source_type, title: k.title })
+        nonProductCount++
       }
     }
 
