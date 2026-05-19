@@ -337,26 +337,22 @@ function ProductCards({
   urlTemplate?: string
   brandName: string
 }) {
-  function buildUrl(handle?: string): string {
-    if (!handle) return '#'
-    if (urlTemplate && urlTemplate.includes('{handle}')) {
-      return urlTemplate.replace('{handle}', encodeURIComponent(handle))
-    }
-    return `/products/${encodeURIComponent(handle)}`
+  // Only treat a template as usable if it includes the {handle} placeholder
+  // AND is absolute. Otherwise we'd render a CTA that links to a broken page.
+  const hasUsableTemplate = Boolean(
+    urlTemplate && urlTemplate.includes('{handle}') && /^https?:\/\//i.test(urlTemplate)
+  )
+
+  function buildUrl(handle: string): string {
+    return urlTemplate!.replace('{handle}', encodeURIComponent(handle))
   }
+
   return (
     <div className="livv-bot-cards">
       {sources.map((s, i) => {
-        const href = buildUrl(s.handle)
-        const isExternal = href.startsWith('http')
-        return (
-          <a
-            key={i}
-            className="livv-bot-card"
-            href={href}
-            target={isExternal ? '_blank' : '_top'}
-            rel={isExternal ? 'noopener noreferrer' : undefined}
-          >
+        const canLink = hasUsableTemplate && Boolean(s.handle)
+        const inner = (
+          <>
             <div className="livv-bot-card-media">
               {s.image_url ? (
                 <img src={s.image_url} alt={s.title} loading="lazy" />
@@ -375,9 +371,28 @@ function ProductCards({
                     : s.description}
                 </div>
               )}
-              <div className="livv-bot-card-cta">View product →</div>
+              {canLink && <div className="livv-bot-card-cta">View product →</div>}
             </div>
-          </a>
+          </>
+        )
+        if (canLink) {
+          return (
+            <a
+              key={i}
+              className="livv-bot-card"
+              href={buildUrl(s.handle!)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {inner}
+            </a>
+          )
+        }
+        // Static info-card when there's no working URL pattern yet.
+        return (
+          <div key={i} className="livv-bot-card livv-bot-card-static">
+            {inner}
+          </div>
         )
       })}
     </div>

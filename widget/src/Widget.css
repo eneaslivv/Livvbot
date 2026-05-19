@@ -383,11 +383,16 @@
   transition: all 0.16s ease;
   box-shadow: var(--livv-shadow-card);
 }
-.livv-bot-card:hover {
+.livv-bot-card:not(.livv-bot-card-static):hover {
   border-color: var(--livv-border-strong);
   transform: translateY(-1px);
   box-shadow: var(--livv-shadow-card-hover);
 }
+
+/* When there's no working product URL pattern yet, render an info-only
+   card with no hover affordance — the user shouldn't be teased into
+   clicking something that goes nowhere. */
+.livv-bot-card-static { cursor: default; }
 
 .livv-bot-card-media {
   background: linear-gradient(135deg,
