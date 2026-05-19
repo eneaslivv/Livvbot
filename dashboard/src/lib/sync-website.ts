@@ -71,6 +71,84 @@ function sha256(s: string): string {
   return createHash('sha256').update(s).digest('hex')
 }
 
+// ---- Shopify JSON catalog (fast path) -----------------------------------
+// Any storefront with `/products.json` exposed (Shopify defaults this on
+// unless explicitly disabled) lets us skip HTML scraping entirely and pull
+// the canonical catalog with proper handles, images, tags and prices.
+
+interface ShopifyImage { src?: string }
+interface ShopifyVariant { price?: string; compare_at_price?: string | null }
+interface ShopifyProduct {
+  id: number | string
+  handle: string
+  title: string
+  body_html?: string
+  product_type?: string
+  vendor?: string
+  tags?: string | string[]
+  images?: ShopifyImage[]
+  variants?: ShopifyVariant[]
+}
+
+async function fetchShopifyCatalog(websiteUrl: string): Promise<ShopifyProduct[] | null> {
+  const base = new URL(normalizeUrl(websiteUrl)).origin
+  const url = `${base}/products.json?limit=250`
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(12_000),
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) return null
+    const data: any = await res.json()
+    if (!Array.isArray(data?.products)) return null
+    return data.products as ShopifyProduct[]
+  } catch {
+    return null
+  }
+}
+
+function shopifyToProduct(p: ShopifyProduct) {
+  const tags = Array.isArray(p.tags)
+    ? p.tags
+    : typeof p.tags === 'string'
+      ? p.tags.split(',').map((s) => s.trim()).filter(Boolean)
+      : []
+  const ptype = (p.product_type ?? '').trim()
+  // Heuristic category: prefer product_type when set, else first tag-as-category.
+  const category = ptype ? slugify(ptype) : tags.length > 0 ? slugify(tags[0]) : null
+  const image = (p.images ?? []).find((i) => i.src)?.src ?? null
+  const price = parseFloat(p.variants?.[0]?.price ?? '') || null
+  const description = stripHtml(p.body_html ?? '').slice(0, 2000)
+  return {
+    external_id: String(p.id),
+    handle: p.handle,
+    name: p.title.trim(),
+    description,
+    tags,
+    metadata: {
+      product_type: ptype,
+      vendor: p.vendor ?? '',
+      price,
+      source: 'shopify-json',
+    },
+    image_url: image,
+    category,
+  }
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function normalizeUrl(raw: string): string {
   return raw.startsWith('http') ? raw : `https://${raw}`
 }
@@ -195,6 +273,147 @@ async function embed(apiKey: string, text: string): Promise<number[]> {
   if (!res.ok) throw new Error(`embedding failed: ${res.status}`)
   const data = await res.json()
   return data.data[0].embedding
+}
+
+async function embedBatch(apiKey: string, texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return []
+  const res = await fetch('https://api.openai.com/v1/embeddings', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'text-embedding-3-small', input: texts }),
+  })
+  if (!res.ok) throw new Error(`batch embedding failed: ${res.status}`)
+  const data = await res.json()
+  return (data.data as Array<{ embedding: number[] }>).map((d) => d.embedding)
+}
+
+async function importShopifyCatalog({
+  tenant,
+  apiKey,
+  products,
+  result,
+  start,
+}: {
+  tenant: { id: string; slug: string }
+  apiKey: string
+  products: ShopifyProduct[]
+  result: SyncResult
+  start: number
+}): Promise<SyncResult> {
+  const supabase = createClient()
+  const rows = products.map(shopifyToProduct)
+  result.pagesCrawled = rows.length
+
+  const { data: existing } = await supabase
+    .from('products')
+    .select('id, handle, content_hash')
+    .eq('tenant_id', tenant.id)
+  const existingByHandle = new Map<string, { id: string; content_hash: string | null }>(
+    (existing ?? []).map((p: any) => [p.handle as string, p])
+  )
+
+  // Decide who needs new embeddings (content changed or new) vs who can be
+  // just touched.
+  const toEmbed: typeof rows = []
+  const skipIds: string[] = []
+  const hashByHandle = new Map<string, string>()
+  for (const r of rows) {
+    const hash = sha256(`${r.name}|${r.description}|${JSON.stringify(r.tags)}`)
+    hashByHandle.set(r.handle, hash)
+    const ex = existingByHandle.get(r.handle)
+    if (ex && ex.content_hash === hash) {
+      skipIds.push(ex.id)
+      result.productsSkipped++
+    } else {
+      toEmbed.push(r)
+    }
+  }
+
+  // Bump last_scraped_at for unchanged rows so the dashboard reflects this sync.
+  if (skipIds.length > 0) {
+    await supabase
+      .from('products')
+      .update({ last_scraped_at: new Date().toISOString() })
+      .in('id', skipIds)
+  }
+
+  // Batch-embed everything that changed (Shopify products are short — 49 fit
+  // in one OpenAI call). Caps at 96 per batch to be safe on token limits.
+  const BATCH = 96
+  for (let i = 0; i < toEmbed.length; i += BATCH) {
+    const batch = toEmbed.slice(i, i + BATCH)
+    const texts = batch.map((r) =>
+      [
+        r.name,
+        r.description,
+        r.metadata.product_type ? `Type: ${r.metadata.product_type}` : '',
+        r.tags.length ? `Tags: ${r.tags.join(', ')}` : '',
+      ]
+        .filter(Boolean)
+        .join('\n')
+        .slice(0, 6000)
+    )
+    let embeddings: number[][]
+    try {
+      embeddings = await embedBatch(apiKey, texts)
+    } catch (e) {
+      result.errors.push(`embed batch ${i}: ${(e as Error).message}`)
+      continue
+    }
+    for (let j = 0; j < batch.length; j++) {
+      const r = batch[j]
+      const hash = hashByHandle.get(r.handle)!
+      const payload: Record<string, any> = {
+        tenant_id: tenant.id,
+        external_id: r.external_id,
+        handle: r.handle,
+        name: r.name,
+        description: r.description,
+        tags: r.tags,
+        metadata: r.metadata,
+        image_url: r.image_url,
+        category: r.category,
+        embedding: embeddings[j],
+        content_hash: hash,
+        last_scraped_at: new Date().toISOString(),
+      }
+      const ex = existingByHandle.get(r.handle)
+      try {
+        if (ex) {
+          await supabase.from('products').update(payload).eq('id', ex.id)
+          result.productsUpdated++
+        } else {
+          await supabase.from('products').insert(payload)
+          result.productsAdded++
+        }
+      } catch (e) {
+        result.errors.push(`upsert ${r.handle}: ${(e as Error).message}`)
+      }
+    }
+  }
+
+  // Optional cleanup: drop rows whose handles no longer exist in Shopify.
+  // Keeps the catalog in sync if a product is removed upstream.
+  const liveHandles = new Set(rows.map((r) => r.handle))
+  const orphanIds: string[] = []
+  for (const [h, ex] of existingByHandle.entries()) {
+    if (!liveHandles.has(h)) orphanIds.push(ex.id)
+  }
+  if (orphanIds.length > 0) {
+    await supabase.from('products').delete().in('id', orphanIds)
+    result.errors.push(
+      `Removed ${orphanIds.length} stale products no longer in Shopify catalog.`
+    )
+  }
+
+  await supabase
+    .from('tenants')
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq('id', tenant.id)
+
+  result.ok = true
+  result.durationMs = Date.now() - start
+  return result
 }
 
 async function extractFromPage(
@@ -383,10 +602,24 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
 
   const apiKey = tenant.openai_api_key_encrypted as string
 
-  // 0. Refuse to sync client-rendered SPAs. Crawling them blindly is how the
-  //    DB got 25 invented products in May (handles like 'kru-sauce-fiery'
-  //    that don't exist on the storefront). The user has to switch to a
-  //    server-rendered URL or use a different data source.
+  // 0a. FAST PATH — if the website is a Shopify store, /products.json gives
+  //     us the canonical catalog (handles, images, prices, tags). Skip the
+  //     HTML crawl + LLM extraction entirely; it's slower and unreliable.
+  const shopifyCatalog = await fetchShopifyCatalog(tenant.website_url)
+  if (shopifyCatalog && shopifyCatalog.length > 0) {
+    return await importShopifyCatalog({
+      tenant,
+      apiKey,
+      products: shopifyCatalog,
+      result,
+      start,
+    })
+  }
+
+  // 0b. Refuse to sync client-rendered SPAs. Crawling them blindly is how the
+  //     DB got 25 invented products in May (handles like 'kru-sauce-fiery'
+  //     that don't exist on the storefront). The user has to switch to a
+  //     server-rendered URL or use a different data source.
   if (await looksLikeSpaShell(tenant.website_url)) {
     result.error =
       `${tenant.website_url} looks like a client-rendered SPA (the HTML is an empty shell). ` +
