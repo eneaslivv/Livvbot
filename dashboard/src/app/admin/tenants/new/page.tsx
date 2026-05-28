@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Card, Field, Button } from '@/components/ui'
 import { ArrowLeft, Plus } from 'lucide-react'
 
@@ -61,6 +61,31 @@ async function createTenant(formData: FormData) {
       redirect(`/admin/tenants/new?error=slug_taken&slug=${encodeURIComponent(slug)}`)
     }
     redirect(`/admin/tenants/new?error=${encodeURIComponent(error.message)}`)
+  }
+
+  // Auto-add the LIVV admin who created this tenant as its first owner.
+  // Without this row the new tenant doesn't show up in their sidebar
+  // ("YOUR BOTS") because getUserTenants() filters by tenant_users
+  // membership. They can still reach it from /admin/tenants but the
+  // sidebar dropping it makes the tenant feel "missing".
+  // Uses the service-role client so it bypasses RLS — the auth check
+  // already happened in the admin layout (isLivvAdmin).
+  try {
+    const supabaseAuth = createClient()
+    const {
+      data: { session },
+    } = await supabaseAuth.auth.getSession()
+    const userId = session?.user.id
+    if (userId) {
+      const admin = createAdminClient()
+      await admin.from('tenant_users').upsert(
+        { tenant_id: data.id, user_id: userId, role: 'owner' },
+        { onConflict: 'tenant_id,user_id' }
+      )
+    }
+  } catch {
+    // Non-fatal: the tenant exists; the admin can self-assign from
+    // /admin/tenants/<slug> if this somehow failed.
   }
 
   redirect(`/admin/tenants/${data.slug}`)
