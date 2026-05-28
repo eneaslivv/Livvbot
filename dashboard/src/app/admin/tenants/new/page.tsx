@@ -55,6 +55,11 @@ async function createTenant(formData: FormData) {
     .single()
 
   if (error) {
+    // Duplicate slug is a common-enough mistake that it deserves a clearer
+    // error and a one-click path forward to the existing tenant.
+    if (error.code === '23505' || /duplicate/i.test(error.message)) {
+      redirect(`/admin/tenants/new?error=slug_taken&slug=${encodeURIComponent(slug)}`)
+    }
     redirect(`/admin/tenants/new?error=${encodeURIComponent(error.message)}`)
   }
 
@@ -64,8 +69,11 @@ async function createTenant(formData: FormData) {
 export default function NewTenantPage({
   searchParams,
 }: {
-  searchParams: { error?: string }
+  searchParams: { error?: string; slug?: string }
 }) {
+  const slugTaken = searchParams.error === 'slug_taken'
+  const takenSlug = searchParams.slug ?? ''
+
   return (
     <div className="px-8 py-8 max-w-2xl">
       <Link
@@ -79,7 +87,26 @@ export default function NewTenantPage({
         Create the record for a new client. You can fine-tune everything afterwards in Settings.
       </p>
 
-      {searchParams.error && (
+      {slugTaken && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-3 rounded-lg flex items-start justify-between gap-3">
+          <div>
+            <div className="font-medium">Slug already in use</div>
+            <div className="text-xs mt-0.5 text-amber-800">
+              A tenant with the slug <span className="font-mono">{takenSlug}</span> already exists.
+              Either pick a different slug or open the existing one.
+            </div>
+          </div>
+          {takenSlug && (
+            <Link
+              href={`/admin/tenants/${takenSlug}`}
+              className="shrink-0 inline-flex items-center gap-1 text-xs font-medium bg-ink text-accent-fg px-2.5 py-1.5 rounded-md hover:bg-ink-soft"
+            >
+              Open it →
+            </Link>
+          )}
+        </div>
+      )}
+      {searchParams.error && !slugTaken && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-900 text-sm px-4 py-2 rounded-lg">
           {searchParams.error}
         </div>
