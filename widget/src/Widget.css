@@ -312,8 +312,25 @@
   border: 1px solid var(--livv-border);
   border-radius: var(--livv-radius-bubble);
   border-bottom-left-radius: 6px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   box-shadow: var(--livv-shadow-card);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 86%;
+}
+/* "Searching…" / "Reading…" / "Writing…" label next to the wave. The
+   `key=text` swap re-mounts the span so the fade animation runs on each
+   stage transition — looks like progress, not a frozen string. */
+.livv-bot-thinking-text {
+  font-size: 12.5px;
+  color: var(--livv-ink-muted);
+  letter-spacing: -0.005em;
+  animation: livv-thinking-in 0.32s ease;
+}
+@keyframes livv-thinking-in {
+  from { opacity: 0; transform: translateX(-2px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 .livv-bot-wave {
   display: inline-flex;
@@ -498,22 +515,28 @@
   margin-top: 6px;
 }
 .livv-bot-source-pill {
-  font-size: 11px;
-  color: var(--livv-ink-soft);
-  background: var(--livv-surface);
+  font-size: 10.5px;
+  color: var(--livv-ink-muted);
+  background: transparent;
   border: 1px solid var(--livv-border);
   border-radius: var(--livv-radius-pill);
-  padding: 3px 8px;
+  padding: 2px 8px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-weight: 500;
+  letter-spacing: 0.005em;
+  /* Truncate long titles instead of wrapping → pills stay one line. */
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .livv-bot-source-pill-icon {
   width: 10px;
   height: 10px;
   flex-shrink: 0;
-  opacity: 0.6;
+  opacity: 0.55;
 }
 
 /* ---- Error ------------------------------------------------------------ */

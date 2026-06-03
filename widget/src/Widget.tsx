@@ -70,6 +70,45 @@ const SourceIcon = ({ type }: { type: SourceRef['type'] }) => {
   )
 }
 
+// Strip extensions, replace underscores with spaces, and title-case so a
+// raw filename like "wmf_franchise_chatbot_knowledge_base.md" reads as
+// "Wmf Franchise Chatbot Knowledge Base". Visitors shouldn't see file
+// internals — but if a chip survives the filter, at least make it human.
+function humanizeSourceTitle(title: string): string {
+  return title
+    .replace(/\.(md|mdx|txt|pdf|docx?|html?|json|csv)$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+const THINKING_STAGES = [
+  'Searching the knowledge base…',
+  'Reading the most relevant pages…',
+  'Writing the answer…',
+]
+
+// Cycle a thinking-style status next to the wave dots while waiting on
+// the LLM. Three short stages spread across ~6 s — matches the typical
+// chat function latency without ever looking stuck.
+function useThinkingStage(active: boolean): string {
+  const [stage, setStage] = useState(0)
+  useEffect(() => {
+    if (!active) {
+      setStage(0)
+      return
+    }
+    const t1 = setTimeout(() => setStage(1), 1600)
+    const t2 = setTimeout(() => setStage(2), 3600)
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [active])
+  return THINKING_STAGES[stage]
+}
+
 export function Widget({ config }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [hasPulse, setHasPulse] = useState(false)
@@ -269,7 +308,12 @@ export function Widget({ config }: Props) {
 
             {messages.map((m, i) => {
               const productSources = (m.sources ?? []).filter((s) => s.type === 'product')
-              const otherSources = (m.sources ?? []).filter((s) => s.type !== 'product')
+              // Visitors don't need to see raw document filenames — they're
+              // noisy and reveal internal file structure. Show FAQs and
+              // recipes only (those have human titles like "How to apply").
+              const otherSources = (m.sources ?? []).filter(
+                (s) => s.type === 'faq' || s.type === 'recipe'
+              )
               const rowRole = m.role === 'human' ? 'assistant' : m.role
               return (
                 <div
@@ -291,10 +335,10 @@ export function Widget({ config }: Props) {
                   </div>
                   {otherSources.length > 0 && (
                     <div className="livv-bot-sources">
-                      {otherSources.slice(0, 4).map((s, j) => (
+                      {otherSources.slice(0, 2).map((s, j) => (
                         <span key={j} className="livv-bot-source-pill">
                           <SourceIcon type={s.type} />
-                          {s.title}
+                          {humanizeSourceTitle(s.title)}
                         </span>
                       ))}
                     </div>
@@ -310,13 +354,7 @@ export function Widget({ config }: Props) {
               )
             })}
 
-            {isLoading && (
-              <div className="livv-bot-typing">
-                <span className="livv-bot-wave">
-                  <span /> <span /> <span />
-                </span>
-              </div>
-            )}
+            {isLoading && <ThinkingIndicator />}
 
             {error && <div className="livv-bot-error">{error}</div>}
 
@@ -354,6 +392,20 @@ export function Widget({ config }: Props) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ThinkingIndicator() {
+  const text = useThinkingStage(true)
+  return (
+    <div className="livv-bot-typing">
+      <span className="livv-bot-wave">
+        <span /> <span /> <span />
+      </span>
+      <span className="livv-bot-thinking-text" key={text}>
+        {text}
+      </span>
     </div>
   )
 }
