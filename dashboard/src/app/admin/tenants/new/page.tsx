@@ -9,6 +9,9 @@ async function createTenant(formData: FormData) {
   const slug = String(formData.get('slug') ?? '').toLowerCase().trim()
   const name = String(formData.get('name') ?? '').trim()
   const botName = String(formData.get('botName') ?? '').trim()
+  const verticalRaw = String(formData.get('vertical') ?? 'ecommerce').trim()
+  const ALLOWED_VERTICALS = ['ecommerce', 'restaurant', 'service', 'franchise', 'saas', 'general']
+  const vertical = ALLOWED_VERTICALS.includes(verticalRaw) ? verticalRaw : 'ecommerce'
 
   if (!slug || !name) return
 
@@ -50,6 +53,7 @@ async function createTenant(formData: FormData) {
       },
       system_prompt: `You are ${botName || name}, the assistant for ${name}. Be helpful, concise, and honest. Never invent facts.`,
       allowed_origins: defaultAllowedOrigins,
+      vertical,
     })
     .select()
     .single()
@@ -159,6 +163,26 @@ export default function NewTenantPage({
               placeholder="Crew"
               help="Optional. Defaults to the company name if left blank."
             />
+            <div>
+              <label className="block text-xs font-medium text-ink-soft mb-1.5">
+                Business type
+              </label>
+              <select
+                name="vertical"
+                defaultValue="ecommerce"
+                className="w-full border border-border rounded-md px-3 py-2 text-sm bg-surface focus:outline-none focus:border-ink"
+              >
+                <option value="ecommerce">E-commerce (products + cart)</option>
+                <option value="restaurant">Restaurant (menu + dishes)</option>
+                <option value="service">Service business (consulting, agencies)</option>
+                <option value="franchise">Franchise (recruiting franchisees)</option>
+                <option value="saas">SaaS (plans + features)</option>
+                <option value="general">General</option>
+              </select>
+              <p className="text-[11px] text-ink-muted mt-1">
+                Drives the baseline prompt + sync strategy. Change later from Settings.
+              </p>
+            </div>
           </div>
         </Card>
         <div className="mt-4 flex justify-end gap-2">

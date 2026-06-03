@@ -580,7 +580,7 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
   const supabase = createClient()
   const { data: tenant, error: tErr } = await supabase
     .from('tenants')
-    .select('id, slug, website_url, openai_api_key_encrypted')
+    .select('id, slug, website_url, openai_api_key_encrypted, vertical')
     .eq('slug', slug)
     .single()
 
@@ -601,19 +601,25 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
   }
 
   const apiKey = tenant.openai_api_key_encrypted as string
+  const vertical = (tenant.vertical ?? 'ecommerce') as
+    | 'ecommerce' | 'restaurant' | 'service' | 'franchise' | 'saas' | 'general'
+  const isEcommerce = vertical === 'ecommerce' || vertical === 'restaurant'
 
   // 0a. FAST PATH — if the website is a Shopify store, /products.json gives
   //     us the canonical catalog (handles, images, prices, tags). Skip the
   //     HTML crawl + LLM extraction entirely; it's slower and unreliable.
-  const shopifyCatalog = await fetchShopifyCatalog(tenant.website_url)
-  if (shopifyCatalog && shopifyCatalog.length > 0) {
-    return await importShopifyCatalog({
-      tenant,
-      apiKey,
-      products: shopifyCatalog,
-      result,
-      start,
-    })
+  //     Only worth trying for ecommerce/restaurant verticals.
+  if (isEcommerce) {
+    const shopifyCatalog = await fetchShopifyCatalog(tenant.website_url)
+    if (shopifyCatalog && shopifyCatalog.length > 0) {
+      return await importShopifyCatalog({
+        tenant,
+        apiKey,
+        products: shopifyCatalog,
+        result,
+        start,
+      })
+    }
   }
 
   // 0b. Refuse to sync client-rendered SPAs. Crawling them blindly is how the
@@ -642,7 +648,15 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
     return result
   }
 
-  const toCrawl = filterRelevant(allUrls)
+  // Non-ecommerce verticals (service, franchise, saas, general): the path
+  // filter is tuned for shop URLs and would drop most of the relevant
+  // pages (e.g. /fees-and-finance, /how-to-apply, /our-story aren't in
+  // the allow-list). Just take every sitemap URL up to the cap and let
+  // the LLM decide what's useful. Ecommerce keeps the strict filter so
+  // we don't waste tokens on blog posts and admin pages.
+  const toCrawl = isEcommerce
+    ? filterRelevant(allUrls)
+    : Array.from(new Set(allUrls)).slice(0, MAX_URLS)
   result.pagesCrawled = toCrawl.length
 
   if (toCrawl.length === 0) {
@@ -693,34 +707,38 @@ export async function syncTenantWebsite(slug: string): Promise<SyncResult> {
     }
   }
 
-  // Validate handles against the live storefront. We try the conventional
-  // /products/<handle> path and confirm it returns real content (not the
-  // SPA shell, not a 404). Anything that fails validation is dropped — we'd
-  // rather skip a product than insert a row that points to a dead URL.
-  const baseUrl = new URL(normalizeUrl(tenant.website_url)).origin
-  const validatedByHandle = new Map<string, (typeof allProducts)[number]>()
-  const rejectedSamples: string[] = []
-  await mapWithConcurrency(
-    Array.from(productByHandle.entries()),
-    MAX_CONCURRENCY,
-    async ([handle, p]) => {
-      const candidate = `${baseUrl}/products/${handle}`
-      if (await urlReturnsRealContent(candidate, homepageLen)) {
-        validatedByHandle.set(handle, p)
-      } else if (rejectedSamples.length < 5) {
-        rejectedSamples.push(handle)
+  // For ecommerce: validate handles against /products/<handle> on the live
+  // storefront. Anything that fails validation is dropped — we'd rather
+  // skip a product than insert a row that points to a dead URL.
+  // For non-ecommerce verticals there's no product URL convention to test
+  // against, so skip this step entirely; the products array is mostly
+  // empty for those anyway (FAQs are the main signal).
+  if (isEcommerce && productByHandle.size > 0) {
+    const baseUrl = new URL(normalizeUrl(tenant.website_url)).origin
+    const validatedByHandle = new Map<string, (typeof allProducts)[number]>()
+    const rejectedSamples: string[] = []
+    await mapWithConcurrency(
+      Array.from(productByHandle.entries()),
+      MAX_CONCURRENCY,
+      async ([handle, p]) => {
+        const candidate = `${baseUrl}/products/${handle}`
+        if (await urlReturnsRealContent(candidate, homepageLen)) {
+          validatedByHandle.set(handle, p)
+        } else if (rejectedSamples.length < 5) {
+          rejectedSamples.push(handle)
+        }
       }
-    }
-  )
-
-  if (rejectedSamples.length > 0) {
-    result.errors.push(
-      `Skipped ${productByHandle.size - validatedByHandle.size} products with URLs that don't resolve to a real page (sample: ${rejectedSamples.join(', ')}).`
     )
+
+    if (rejectedSamples.length > 0) {
+      result.errors.push(
+        `Skipped ${productByHandle.size - validatedByHandle.size} products with URLs that don't resolve to a real page (sample: ${rejectedSamples.join(', ')}).`
+      )
+    }
+    // Replace the working set with only the validated entries.
+    productByHandle.clear()
+    for (const [h, p] of validatedByHandle) productByHandle.set(h, p)
   }
-  // Replace the working set with only the validated entries.
-  productByHandle.clear()
-  for (const [h, p] of validatedByHandle) productByHandle.set(h, p)
 
   // Load current hashes to decide insert vs update vs skip
   type ExistingRow = { id: string; handle?: string; question?: string; content_hash: string | null }

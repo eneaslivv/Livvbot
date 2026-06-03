@@ -25,6 +25,9 @@ async function updateSettings(slug: string, formData: FormData) {
   const systemPrompt = String(formData.get('systemPrompt') ?? '')
   const openaiApiKey = String(formData.get('openaiApiKey') ?? '').trim()
   const openaiModel = String(formData.get('openaiModel') ?? 'gpt-4o-mini')
+  const verticalRaw = String(formData.get('vertical') ?? '').trim()
+  const ALLOWED_VERTICALS = ['ecommerce', 'restaurant', 'service', 'franchise', 'saas', 'general']
+  const vertical = ALLOWED_VERTICALS.includes(verticalRaw) ? verticalRaw : 'ecommerce'
   const fallbackEmail = String(formData.get('fallbackEmail') ?? '')
   const allowedOriginsRaw = String(formData.get('allowedOrigins') ?? '')
   const handoffKeywordsRaw = String(formData.get('handoffKeywords') ?? '')
@@ -76,6 +79,7 @@ async function updateSettings(slug: string, formData: FormData) {
     quick_actions: quickActions,
     website_url: websiteUrl,
     bot_rules: botRules,
+    vertical,
   }
 
   if (openaiApiKey && !openaiApiKey.startsWith('\u2022')) {
@@ -214,6 +218,26 @@ export default async function SettingsPage({
             description="Personality, model, and the API key that powers the bot."
           >
             <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-ink-soft mb-1.5">
+                  Business type
+                </label>
+                <select
+                  name="vertical"
+                  defaultValue={tenant.vertical ?? 'ecommerce'}
+                  className="w-full md:w-72 border border-border rounded-md px-3 py-2 text-sm bg-surface focus:outline-none focus:border-ink"
+                >
+                  <option value="ecommerce">E-commerce (products + cart)</option>
+                  <option value="restaurant">Restaurant (menu + dishes)</option>
+                  <option value="service">Service business (consulting, agencies)</option>
+                  <option value="franchise">Franchise (recruiting franchisees)</option>
+                  <option value="saas">SaaS (plans + features)</option>
+                  <option value="general">General (no specific vertical)</option>
+                </select>
+                <p className="text-[11px] text-ink-muted mt-1">
+                  Picks the right baseline prompt and sync strategy. E-commerce uses Shopify-style product cards + cart; service/franchise focuses on lead qualification and info pages.
+                </p>
+              </div>
               <TextArea
                 label="System prompt"
                 name="systemPrompt"

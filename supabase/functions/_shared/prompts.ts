@@ -48,6 +48,14 @@ export interface BotRules {
   external_topic_policy?: string
 }
 
+export type TenantVertical =
+  | 'ecommerce'
+  | 'restaurant'
+  | 'service'
+  | 'franchise'
+  | 'saas'
+  | 'general'
+
 export interface Correction {
   user_query: string
   original_message?: string | null
@@ -65,8 +73,23 @@ export function buildSystemPrompt(
   knowledge: KnowledgeContext[],
   userContext: UserContext,
   botRules?: BotRules,
-  corrections?: Correction[]
+  corrections?: Correction[],
+  vertical: TenantVertical = 'ecommerce'
 ): string {
+  const isEcommerce = vertical === 'ecommerce' || vertical === 'restaurant'
+  // What the bot calls items in the knowledge base. Defaults are
+  // ecommerce-flavoured ("products"); other verticals get phrased around
+  // the relevant noun so the model isn't told to "recommend products"
+  // on a site that doesn't sell any.
+  const ITEM_NOUN: Record<TenantVertical, { singular: string; plural: string }> = {
+    ecommerce: { singular: 'product', plural: 'products' },
+    restaurant: { singular: 'dish', plural: 'dishes' },
+    service: { singular: 'service', plural: 'services' },
+    franchise: { singular: 'page', plural: 'relevant pages' },
+    saas: { singular: 'plan', plural: 'plans' },
+    general: { singular: 'item', plural: 'items' },
+  }
+  const item = ITEM_NOUN[vertical] ?? ITEM_NOUN.general
   const knowledgeBlock = knowledge.length
     ? knowledge.map((k, i) =>
         `[${i + 1}] (${k.source_type}) ${k.title}\n${k.content}`
@@ -174,18 +197,37 @@ ${knowledgeBlock}${contextBlock}
 
 ## RULES — STYLE & LENGTH
 - Default to **short answers: 2–4 sentences, under 70 words.** Be direct. No filler phrases ("Hope this helps!", "Feel free to ask!", "If you have any more questions…").
-- Only go longer when the user explicitly asks for a list, comparison, or details ("show me all", "what kinds", "list the sauces"). When you do list, name each matching item from the knowledge base individually with the distinguishing detail that's actually in the source — never merge items into a generic summary.
-- **Recommend at most 2 products per reply** unless the user asked for a full list. The UI shows cards automatically when you mention a product by name — don't paste the name twice ("Yamu-Yamu Sauce (Yamu-Yamu)").
-- If relevant products appear in the knowledge base, mention them by name so the UI can render cards. Don't try to embed prices, links, or images in the text yourself.
-- Consider the user's cart and recent pages — proactively suggest complementary products or recipes ONLY when those products exist in the knowledge base, and keep suggestions tight (one option, not three).
-- If the user asks about orders, refunds, shipping status, or personal account issues, respond briefly and tell them to email the support address provided by the handler.
+- Only go longer when the user explicitly asks for a list, comparison, or details ("show me all", "what kinds", "list the ${item.plural}"). When you do list, name each matching ${item.singular} from the knowledge base individually with the distinguishing detail that's actually in the source — never merge items into a generic summary.
+- **Recommend at most 2 ${item.plural} per reply** unless the user asked for a full list.${
+  isEcommerce
+    ? ` The UI shows ${item.singular} cards automatically when you mention one by name — don't paste the name twice ("Yamu-Yamu Sauce (Yamu-Yamu)").`
+    : ''
+}
+- If relevant ${item.plural} appear in the knowledge base, mention them by name${
+  isEcommerce
+    ? ` so the UI can render cards. Don't try to embed prices, links, or images in the text yourself.`
+    : `.`
+}
+${
+  isEcommerce
+    ? `- Consider the user's cart and recent pages — proactively suggest complementary ${item.plural} ONLY when those exist in the knowledge base, and keep suggestions tight (one option, not three).
+`
+    : ''
+}- If the user asks about ${
+  isEcommerce
+    ? 'orders, refunds, shipping status, or personal account issues'
+    : 'personal account issues, billing, contracts, or legal matters'
+}, respond briefly and tell them to email the support address provided by the handler.
 - Match the tone and language of the user. If they write in Spanish, reply in Spanish.
 
 ## RULES — LINKS (strict, prevents hallucinated URLs)
-- **Never write a URL unless it appears verbatim in the KNOWLEDGE BASE above.** Do not guess, construct, or template URLs by combining a domain with a slug, even if the pattern looks obvious.
-- For products: just say the product's name. Do NOT write \`https://...\` for products. The UI builds the link from the product's handle automatically.
-- For URLs that DO appear in the knowledge base (an article, a PDF, an image): copy them exactly as written, formatted as \`[descriptive label](https://exact-url-from-kb)\`. Never modify the path or add UTM params.
-- If the user asks for a link to something that isn't in the knowledge base ("link to the about page", "where's your blog"), don't invent one — say you don't have that link and offer human handoff via the support email.`
+- **Never write a URL unless it appears verbatim in the KNOWLEDGE BASE above.** Do not guess, construct, or template URLs by combining a domain with a slug, even if the pattern looks obvious.${
+  isEcommerce
+    ? `\n- For ${item.plural}: just say the ${item.singular}'s name. Do NOT write \`https://...\` for ${item.plural}. The UI builds the link from the ${item.singular}'s handle automatically.`
+    : ''
+}
+- For URLs that DO appear in the knowledge base (an article, a PDF, an image, a contact form): copy them exactly as written, formatted as \`[descriptive label](https://exact-url-from-kb)\`. Never modify the path or add UTM params.
+- If the user asks for a link to something that isn't in the knowledge base, don't invent one — say you don't have that link and offer human handoff via the support email.`
 }
 
 export function detectHandoff(

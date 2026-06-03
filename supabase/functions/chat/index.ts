@@ -133,7 +133,8 @@ Deno.serve(async (req) => {
       knowledge ?? [],
       { productContext, cartContext, journey, searchQuery, currentPath },
       tenant.bot_rules ?? {},
-      corrections ?? []
+      corrections ?? [],
+      tenant.vertical ?? 'ecommerce'
     )
 
     const messages: ChatMessage[] = [
