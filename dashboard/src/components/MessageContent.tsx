@@ -4,6 +4,11 @@ const URL_RE = /https?:\/\/[^\s)<>"']+/g
 const MD_LINK_RE = /\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g
 const IMG_EXT_RE = /\.(png|jpe?g|gif|webp|svg|avif)(\?[^#\s]*)?(#.*)?$/i
 
+// Lightweight inline-markdown for the things models actually emit:
+//   **bold**   →  <strong>
+//   `code`     →  <code>
+const INLINE_FMT_RE = /(\*\*[^*\n]+?\*\*|`[^`\n]+?`)/g
+
 function stripTrailingPunct(url: string): string {
   return url.replace(/[.,;:!?)\]]+$/, '')
 }
@@ -14,7 +19,7 @@ function isImageUrl(url: string): boolean {
 
 type Match = { start: number; end: number; node: ReactNode }
 
-function renderLinks(text: string): ReactNode[] {
+function renderLinks(text: string, baseOffset: number): ReactNode[] {
   const matches: Match[] = []
 
   for (const m of text.matchAll(MD_LINK_RE)) {
@@ -25,7 +30,7 @@ function renderLinks(text: string): ReactNode[] {
       end: m.index + full.length,
       node: (
         <a
-          key={`md-${m.index}`}
+          key={`md-${baseOffset + m.index}`}
           href={url}
           target="_blank"
           rel="noopener noreferrer"
@@ -47,7 +52,7 @@ function renderLinks(text: string): ReactNode[] {
       end: start + url.length,
       node: (
         <a
-          key={`url-${start}`}
+          key={`url-${baseOffset + start}`}
           href={url}
           target="_blank"
           rel="noopener noreferrer"
@@ -64,12 +69,52 @@ function renderLinks(text: string): ReactNode[] {
   const out: ReactNode[] = []
   let cursor = 0
   for (const m of matches) {
-    if (m.start > cursor) out.push(<Fragment key={`t-${cursor}`}>{text.slice(cursor, m.start)}</Fragment>)
+    if (m.start > cursor)
+      out.push(
+        <Fragment key={`t-${baseOffset + cursor}`}>{text.slice(cursor, m.start)}</Fragment>
+      )
     out.push(m.node)
     cursor = m.end
   }
-  if (cursor < text.length) out.push(<Fragment key={`t-${cursor}`}>{text.slice(cursor)}</Fragment>)
+  if (cursor < text.length)
+    out.push(<Fragment key={`t-${baseOffset + cursor}`}>{text.slice(cursor)}</Fragment>)
   return out
+}
+
+function renderInline(text: string): ReactNode[] {
+  const parts: ReactNode[] = []
+  let cursor = 0
+  let m: RegExpExecArray | null
+  INLINE_FMT_RE.lastIndex = 0
+  while ((m = INLINE_FMT_RE.exec(text)) !== null) {
+    if (m.index > cursor) {
+      parts.push(...renderLinks(text.slice(cursor, m.index), cursor))
+    }
+    const matched = m[0]
+    if (matched.startsWith('**')) {
+      const inner = matched.slice(2, -2)
+      parts.push(
+        <strong key={`b-${m.index}`} className="font-semibold">
+          {renderLinks(inner, m.index + 2)}
+        </strong>
+      )
+    } else {
+      const inner = matched.slice(1, -1)
+      parts.push(
+        <code
+          key={`c-${m.index}`}
+          className="px-1 py-0.5 rounded bg-surface-sunken text-[0.92em] font-mono"
+        >
+          {inner}
+        </code>
+      )
+    }
+    cursor = m.index + matched.length
+  }
+  if (cursor < text.length) {
+    parts.push(...renderLinks(text.slice(cursor), cursor))
+  }
+  return parts
 }
 
 function extractImageUrls(text: string): string[] {
@@ -88,7 +133,7 @@ export function MessageContent({ text }: { text: string }) {
   const images = extractImageUrls(text)
   return (
     <>
-      {renderLinks(text)}
+      {renderInline(text)}
       {images.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-2 not-prose">
           {images.map((url) => (

@@ -560,6 +560,16 @@
   font-weight: 500;
   transition: text-decoration-color 0.15s;
 }
+
+/* Inline `code` from MessageContent */
+.livv-bot-code {
+  background: rgba(15, 17, 21, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 0.92em;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+.livv-bot-msg-user .livv-bot-code { background: rgba(255, 255, 255, 0.18); }
 .livv-bot-msg-user .livv-bot-link {
   text-decoration-color: rgba(255, 255, 255, 0.5);
 }
