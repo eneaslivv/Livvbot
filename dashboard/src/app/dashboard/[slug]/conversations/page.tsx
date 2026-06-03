@@ -135,21 +135,26 @@ export default async function ConversationsPage({
         <StatPill label="Unresolved" value={unresolvedCount} icon={UserCheck} accent={unresolvedCount > 0 ? 'amber' : 'neutral'} />
       </div>
 
-      {/* Unresolved handoff banner — only shows when there's something pending */}
+      {/* Unresolved handoff banner — only shows when something is pending */}
       {unresolvedCount > 0 && filter !== 'unresolved' && (
         <Link
           href={`/dashboard/${params.slug}/conversations?filter=unresolved`}
-          className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 hover:bg-amber-100 transition-colors"
+          style={{ background: 'var(--warn-bg)', color: 'var(--warn-fg)' }}
+          className="flex items-center justify-between gap-3 rounded-2xl px-5 py-3.5 hover:brightness-95 transition-all"
         >
-          <div className="flex items-center gap-2.5 text-sm text-amber-900">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-            <strong>{unresolvedCount}</strong> conversation{unresolvedCount === 1 ? '' : 's'} waiting for a human reply
+          <div className="flex items-center gap-2.5 text-[13.5px]">
+            <span
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ background: 'var(--warn)' }}
+            />
+            <strong className="font-medium">{unresolvedCount}</strong>{' '}
+            conversation{unresolvedCount === 1 ? '' : 's'} waiting for a human reply
           </div>
-          <span className="text-xs text-amber-800 font-medium">Open queue →</span>
+          <span className="text-[12px] font-medium inline-flex items-center gap-1">Open queue →</span>
         </Link>
       )}
 
-      {/* Filter chips */}
+      {/* Filter chips — pill style with ink-on-cream active state */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <Filter className="w-3.5 h-3.5 text-ink-faint mr-1" />
         {tabs.map((t) => {
@@ -163,24 +168,26 @@ export default async function ConversationsPage({
             <Link
               key={t.key}
               href={href}
-              className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors ${
+              className={`inline-flex items-center gap-1.5 text-[12.5px] h-8 px-3 rounded-full transition-all duration-150 ease-[cubic-bezier(.16,1,.3,1)] ${
                 active
-                  ? 'bg-ink text-accent-fg border-ink'
-                  : 'bg-surface text-ink-soft border-border hover:border-border-strong hover:text-ink'
+                  ? 'bg-ink text-[var(--cream-50)]'
+                  : 'bg-surface text-ink-soft shadow-[inset_0_0_0_1px_var(--border-strong)] hover:shadow-[inset_0_0_0_1px_var(--ink)] hover:bg-[var(--cream-50)]'
               }`}
             >
               <Icon className="w-3 h-3" />
-              {t.label}
-              <span className={`tabular-nums ${active ? 'opacity-80' : 'text-ink-muted'}`}>
+              <span>{t.label}</span>
+              <span
+                className={`tabular-nums text-[10.5px] ${
+                  active ? 'opacity-60' : 'text-ink-faint'
+                }`}
+              >
                 {t.count}
               </span>
             </Link>
           )
         })}
         {filter !== 'all' && (
-          <span className="text-[11px] text-ink-muted ml-2">
-            Showing {list.length} of {totalAll}
-          </span>
+          <span className="meta ml-2">Showing {list.length} of {totalAll}</span>
         )}
       </div>
 
@@ -408,19 +415,25 @@ function StatPill({
   icon: any
   accent?: 'neutral' | 'emerald' | 'amber'
 }) {
-  const tones = {
-    neutral: 'bg-surface-sunken text-ink-soft',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-800',
+  // Editorial palette — soft tints on cream surfaces. The icon background
+  // hints at the metric's tone without screaming.
+  const tones: Record<typeof accent, { bg: string; fg: string }> = {
+    neutral: { bg: 'var(--cream-100)', fg: 'var(--ink-soft)' },
+    emerald: { bg: 'var(--success-bg)', fg: 'var(--success-fg)' },
+    amber: { bg: 'var(--warn-bg)', fg: 'var(--warn-fg)' },
   }
+  const t = tones[accent]
   return (
-    <div className="bg-surface border border-border rounded-lg px-4 py-3 flex items-center gap-3">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${tones[accent]}`}>
+    <div className="bg-surface border border-border rounded-2xl px-4 py-3.5 flex items-center gap-3 shadow-[0_1px_2px_rgba(41,24,24,0.03)]">
+      <div
+        className="w-[34px] h-[34px] rounded-lg flex items-center justify-center shrink-0"
+        style={{ background: t.bg, color: t.fg }}
+      >
         <Icon className="w-4 h-4" />
       </div>
       <div>
-        <div className="text-xl font-semibold tabular-nums leading-none">{value}</div>
-        <div className="text-[11px] text-ink-muted mt-0.5">{label}</div>
+        <div className="text-[22px] font-light tracking-[-0.03em] tabular-nums leading-none">{value}</div>
+        <div className="meta mt-1">{label}</div>
       </div>
     </div>
   )

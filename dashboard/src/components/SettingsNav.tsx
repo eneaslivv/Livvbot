@@ -35,10 +35,8 @@ export function SettingsNav() {
   }, [])
 
   return (
-    <nav className="sticky top-4 w-48 shrink-0 hidden md:block">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint mb-2 px-2">
-        On this page
-      </div>
+    <nav className="sticky top-4 w-52 shrink-0 hidden md:block">
+      <div className="eyebrow mb-3 px-2">On this page</div>
       <ul className="space-y-0.5">
         {sections.map((s) => {
           const Icon = s.icon
@@ -47,12 +45,13 @@ export function SettingsNav() {
             <li key={s.id}>
               <a
                 href={`#${s.id}`}
-                className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors ${
+                className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-all duration-150 ease-[cubic-bezier(.16,1,.3,1)] ${
                   isActive
-                    ? 'bg-white text-ink font-medium shadow-card'
-                    : 'text-ink-muted hover:text-ink hover:bg-surface-sunken'
+                    ? 'bg-[var(--cream-100)] text-ink font-medium'
+                    : 'text-ink-muted hover:text-ink hover:bg-[var(--cream-50)]'
                 }`}
               >
+                {isActive && <span className="nav-active-strip" aria-hidden />}
                 <Icon className={`w-[14px] h-[14px] ${isActive ? 'opacity-100' : 'opacity-60'}`} />
                 {s.label}
               </a>
