@@ -16,6 +16,8 @@ import {
   Copy,
   ExternalLink,
   Pencil,
+  Briefcase,
+  Layers,
 } from 'lucide-react'
 
 export default async function TenantOverview({ params }: { params: { slug: string } }) {
@@ -25,12 +27,41 @@ export default async function TenantOverview({ params }: { params: { slug: strin
 
   const counts = await getTenantStats(tenant.id)
 
-  const stats = [
-    { label: 'Products', value: counts.products, icon: Package, href: 'knowledge?tab=products', color: 'blue' },
+  // The label of the "products" stat depends on the tenant's vertical so a
+  // franchise / service / saas tenant doesn't read "Products: 0" for a thing
+  // that doesn't exist in their world. Recipes only show for restaurants.
+  const vertical = (tenant.vertical ?? 'ecommerce') as
+    | 'ecommerce'
+    | 'restaurant'
+    | 'service'
+    | 'franchise'
+    | 'saas'
+    | 'general'
+  const productLabelByVertical: Record<typeof vertical, { label: string; icon: any }> = {
+    ecommerce: { label: 'Products', icon: Package },
+    restaurant: { label: 'Menu items', icon: Package },
+    service: { label: 'Services', icon: Briefcase },
+    franchise: { label: 'Programs', icon: Layers },
+    saas: { label: 'Plans', icon: Package },
+    general: { label: 'Items', icon: Package },
+  }
+  const productMeta = productLabelByVertical[vertical] ?? productLabelByVertical.ecommerce
+
+  type StatSpec = {
+    label: string
+    value: number
+    icon: any
+    href: string
+    color: 'blue' | 'purple' | 'orange' | 'emerald'
+  }
+  const stats: StatSpec[] = [
+    { label: productMeta.label, value: counts.products, icon: productMeta.icon, href: 'knowledge?tab=products', color: 'blue' },
     { label: 'FAQs', value: counts.faqs, icon: HelpCircle, href: 'knowledge?tab=faqs', color: 'purple' },
-    { label: 'Recipes', value: counts.recipes, icon: UtensilsCrossed, href: 'knowledge?tab=recipes', color: 'orange' },
+    ...(vertical === 'restaurant'
+      ? ([{ label: 'Recipes', value: counts.recipes, icon: UtensilsCrossed, href: 'knowledge?tab=recipes', color: 'orange' }] as StatSpec[])
+      : []),
     { label: 'Conversations', value: counts.conversations, icon: MessagesSquare, href: 'conversations', color: 'emerald' },
-  ] as const
+  ]
 
   const hasApiKey = Boolean(tenant.openai_api_key_encrypted)
   const hasOrigins = (tenant.allowed_origins?.length ?? 0) > 0
@@ -49,61 +80,75 @@ export default async function TenantOverview({ params }: { params: { slug: strin
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
+      {/* Hero — editorial: large display type + italic greeting, cream gradient */}
       <div
-        className="gradient-border hero-shimmer border border-border rounded-lg p-6 relative overflow-hidden"
+        className="hero-shimmer border border-border-strong rounded-2xl p-7 relative overflow-hidden anim-up"
       >
-        <div className="absolute inset-0 texture-dots opacity-40 pointer-events-none" />
-        <div className="relative flex items-start gap-5">
+        <div className="absolute inset-0 texture-dots opacity-40 pointer-events-none" style={{ maskImage: 'linear-gradient(135deg,#000,transparent 60%)' as any }} />
+        <div className="relative flex items-start gap-6">
           <div
-            className="w-16 h-16 rounded-lg flex items-center justify-center shadow-lg shrink-0 ring-2 ring-white"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
             style={{
-              background: bc.primaryColor ?? '#111110',
-              color: bc.accentColor ?? '#ffffff',
+              background: bc.primaryColor ?? 'var(--cream-900)',
+              boxShadow: '0 8px 24px -6px rgba(41,24,24,0.30), inset 0 0 0 1px rgba(255,255,255,0.1)',
             }}
           >
             {bc.mascotUrl ? (
-              <img src={bc.mascotUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+              <img src={bc.mascotUrl} alt="" className="w-full h-full object-cover rounded-2xl" />
             ) : (
-              <span className="text-xl font-black">
+              <span
+                style={{
+                  fontSize: 30,
+                  fontWeight: 500,
+                  fontFamily: 'var(--font-display)',
+                  color: bc.accentColor ?? 'var(--gold-bright)',
+                  lineHeight: 1,
+                  letterSpacing: '-0.03em',
+                }}
+              >
                 {(bc.botName ?? tenant.name)[0]?.toUpperCase()}
               </span>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 text-[11px] text-ink-muted uppercase tracking-wider">
-              <span className="font-semibold">{tenant.openai_model}</span>
+            <div className="meta mb-2 flex items-center gap-2 flex-wrap">
+              <span>{tenant.openai_model.toUpperCase()}</span>
               <span>·</span>
-              <span>{(tenant.allowed_origins?.length ?? 0)} origin{tenant.allowed_origins?.length === 1 ? '' : 's'}</span>
+              <span>{(tenant.allowed_origins?.length ?? 0)} ORIGINS</span>
               {tenant.fallback_email && (
                 <>
                   <span>·</span>
-                  <span className="normal-case tracking-normal">fallback → {tenant.fallback_email}</span>
+                  <span>fallback → {tenant.fallback_email}</span>
                 </>
               )}
             </div>
-            <h2 className="text-2xl font-semibold tracking-tight mb-1">
+            <h2 className="text-[32px] font-light tracking-[-0.04em] leading-none mb-2.5">
               {bc.botName ?? tenant.name}
             </h2>
-            <p className="text-sm text-ink-soft max-w-lg line-clamp-2">
+            <p className="text-[14.5px] italic max-w-lg line-clamp-2" style={{ color: 'var(--ink-soft)' }}>
               "{bc.greeting ?? 'No greeting configured.'}"
             </p>
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex flex-col items-end gap-3 shrink-0">
             <span
-              className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full ${
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.02em] px-2.5 py-1 rounded-full"
+              style={
                 ready
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-amber-100 text-amber-900'
-              }`}
+                  ? { background: 'var(--success-bg)', color: 'var(--success-fg)' }
+                  : { background: 'var(--warn-bg)', color: 'var(--warn-fg)' }
+              }
             >
-              <span className={`w-1.5 h-1.5 rounded-full ${ready ? 'bg-emerald-500 animate-pulse-dot' : 'bg-amber-500'}`} />
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${ready ? 'animate-pulse-dot' : ''}`}
+                style={{ background: ready ? 'var(--success)' : 'var(--warn)' }}
+              />
               {ready ? 'Live' : 'Needs setup'}
             </span>
             <div className="flex items-center gap-2">
               <Link
                 href={`/dashboard/${params.slug}/settings#branding`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft bg-surface border border-border px-2.5 py-1.5 rounded-lg hover:border-border-strong hover:text-ink transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-soft bg-surface px-3 py-1.5 rounded-full transition-all"
+                style={{ boxShadow: 'inset 0 0 0 1px var(--border-strong)' as any }}
               >
                 <Pencil className="w-3 h-3" />
                 Edit
@@ -121,29 +166,36 @@ export default async function TenantOverview({ params }: { params: { slug: strin
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Stats — adapt grid to 3 or 4 columns based on whether Recipes shows */}
+      <div className={`grid grid-cols-2 ${stats.length === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3`}>
         {stats.map((s) => {
           const Icon = s.icon
-          const colors: Record<string, string> = {
-            blue: 'bg-blue-50 text-blue-600',
-            purple: 'bg-purple-50 text-purple-600',
-            orange: 'bg-orange-50 text-orange-600',
-            emerald: 'bg-emerald-50 text-emerald-600',
+          // Editorial palette: soft cream backgrounds with a sage / wine /
+          // gold / sky tint so the icon hue still reads but the chip sits
+          // on the cream surface instead of the saturated tailwind tints.
+          const tint: Record<string, { bg: string; fg: string }> = {
+            blue: { bg: 'rgba(109, 190, 220, 0.14)', fg: '#3a8aa6' },
+            purple: { bg: 'rgba(241, 173, 216, 0.18)', fg: '#a05286' },
+            orange: { bg: 'var(--accent-soft)', fg: '#8a6d2e' },
+            emerald: { bg: 'var(--success-bg)', fg: 'var(--success-fg)' },
           }
+          const t = tint[s.color]
           return (
             <Link
               key={s.label}
               href={`/dashboard/${params.slug}/${s.href}`}
-              className="group bg-surface border border-border rounded-lg p-4 hover:shadow-card-hover hover:border-border-strong transition-all"
+              className="group bg-surface border border-border rounded-2xl p-5 hover:shadow-[0_12px_28px_-8px_rgba(41,24,24,0.10)] hover:-translate-y-px hover:border-border-strong transition-all duration-200 ease-[cubic-bezier(.16,1,.3,1)]"
             >
-              <div className="flex items-start justify-between">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colors[s.color]}`}>
-                  <Icon className="w-4 h-4" />
+              <div className="flex items-start justify-between mb-3.5">
+                <div
+                  className="w-[34px] h-[34px] rounded-lg flex items-center justify-center"
+                  style={{ background: t.bg, color: t.fg }}
+                >
+                  <Icon className="w-[17px] h-[17px]" />
                 </div>
                 <ArrowUpRight className="w-3.5 h-3.5 text-ink-faint opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-              <div className="text-3xl font-semibold tracking-tight tabular-nums mt-3">
+              <div className="text-[34px] font-light tracking-[-0.04em] tabular-nums leading-none">
                 {s.value}
               </div>
               <div className="text-xs text-ink-muted mt-0.5">{s.label}</div>
@@ -153,27 +205,28 @@ export default async function TenantOverview({ params }: { params: { slug: strin
       </div>
 
       {/* Checklist */}
-      <div className="bg-surface border border-border rounded-lg overflow-hidden">
-        <div className="px-5 py-4 border-b border-border flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent-soft text-accent flex items-center justify-center">
+      <div className="bg-surface border border-border rounded-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-border flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div
+              className="w-9 h-9 rounded-lg flex items-center justify-center"
+              style={{ background: 'var(--accent-soft)', color: '#8a6d2e' }}
+            >
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="font-semibold">Setup checklist</h2>
-              <p className="text-[11px] text-ink-muted">
-                {done}/{checklist.length} completed
-              </p>
+              <div className="eyebrow mb-1">Setup</div>
+              <h2 className="text-[15px] font-medium tracking-[-0.01em]">Bot readiness</h2>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-32 h-1.5 rounded-full bg-surface-sunken overflow-hidden">
+            <div className="w-36 h-1.5 rounded-full bg-[var(--cream-100)] overflow-hidden">
               <div
-                className="h-full bg-ink rounded-full transition-all"
-                style={{ width: `${pct}%` }}
+                className="h-full rounded-full transition-all"
+                style={{ width: `${pct}%`, background: 'var(--gradient-gold)' }}
               />
             </div>
-            <span className="text-xs font-semibold tabular-nums text-ink-soft">{pct}%</span>
+            <span className="meta tabular-nums">{done}/{checklist.length} · {pct}%</span>
           </div>
         </div>
         <ul className="divide-y divide-border-subtle">
