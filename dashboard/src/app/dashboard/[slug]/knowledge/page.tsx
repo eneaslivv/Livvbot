@@ -14,6 +14,8 @@ import {
   Download,
   Sparkles,
   FileText,
+  Briefcase,
+  Layers,
 } from 'lucide-react'
 import { Card, Field, TextArea, Button, Alert, EmptyState, Badge } from '@/components/ui'
 import { EditableKnowledgeList } from '@/components/EditableKnowledgeList'
@@ -377,7 +379,8 @@ export default async function KnowledgePage({
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
-  const tab: Tab = (searchParams.tab as Tab) ?? 'products'
+  // Resolve later, after we know which tabs are available for this vertical.
+  const requestedTab: Tab = (searchParams.tab as Tab) ?? 'products'
   const supabase = createClient()
   const [{ data: products }, { data: recipes }, { data: faqs }, { data: documents }] =
     await Promise.all([
@@ -410,12 +413,35 @@ export default async function KnowledgePage({
     documents: documents?.length ?? 0,
   }
 
-  const tabs: { id: Tab; label: string; icon: any; count: number }[] = [
-    { id: 'products', label: 'Products', icon: Package, count: counts.products },
+  // Tabs adapt to the tenant's vertical so a franchise / SaaS / service bot
+  // doesn't get the "Recipes" tab and "Products" gets renamed to the noun
+  // that actually fits the business (Plans, Services, Programs, Menu items).
+  type TabSpec = { id: Tab; label: string; icon: any; count: number }
+  const PRODUCT_TAB_BY_VERTICAL: Record<string, { label: string; icon: any }> = {
+    ecommerce: { label: 'Products', icon: Package },
+    restaurant: { label: 'Menu items', icon: Package },
+    service: { label: 'Services', icon: Briefcase },
+    franchise: { label: 'Programs', icon: Layers },
+    saas: { label: 'Plans', icon: Package },
+    general: { label: 'Items', icon: Package },
+  }
+  const vertical = (tenant.vertical ?? 'ecommerce') as keyof typeof PRODUCT_TAB_BY_VERTICAL
+  const productMeta = PRODUCT_TAB_BY_VERTICAL[vertical] ?? PRODUCT_TAB_BY_VERTICAL.ecommerce
+  const baseTabs: TabSpec[] = [
+    { id: 'products', label: productMeta.label, icon: productMeta.icon, count: counts.products },
     { id: 'faqs', label: 'FAQs', icon: HelpCircle, count: counts.faqs },
     { id: 'documents', label: 'Documents', icon: FileText, count: counts.documents },
-    { id: 'recipes', label: 'Recipes', icon: UtensilsCrossed, count: counts.recipes },
   ]
+  // Recipes only make sense for restaurants. Hide for everyone else (the row
+  // table still exists, but the tab won't be reachable from the UI).
+  const tabs: TabSpec[] =
+    vertical === 'restaurant'
+      ? [...baseTabs, { id: 'recipes', label: 'Recipes', icon: UtensilsCrossed, count: counts.recipes }]
+      : baseTabs
+  // If the URL asked for a tab that doesn't belong to this vertical (e.g.
+  // recipes on a franchise tenant), fall back to the first allowed tab so
+  // we don't render a blank panel.
+  const tab: Tab = tabs.some((t) => t.id === requestedTab) ? requestedTab : tabs[0].id
 
   const hasApiKey = Boolean(tenant.openai_api_key_encrypted)
 
