@@ -1,0 +1,88 @@
+name: Deploy widget bundle
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'widget/**'
+      - '.github/workflows/deploy-widget.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-widget-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    defaults:
+      run:
+        working-directory: widget
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+          cache-dependency-path: widget/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build widget bundle
+        run: pnpm run build
+
+      - name: Verify required secrets
+        run: |
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY secret is missing. Add it under repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "::error::SUPABASE_PROJECT_REF secret is missing."
+            exit 1
+          fi
+
+      - name: Upload bundle to Supabase Storage (widgets bucket)
+        run: |
+          set -e
+          BUNDLE=dist/widget.iife.js
+          if [ ! -f "$BUNDLE" ]; then
+            echo "::error::Build did not produce $BUNDLE"; exit 1
+          fi
+          SIZE=$(wc -c < "$BUNDLE")
+          echo "Uploading $BUNDLE ($SIZE bytes) to widgets bucket on $SUPABASE_PROJECT_REF..."
+          # x-upsert: true so we overwrite the existing object instead of 409'ing.
+          # no-cache so customer browsers revalidate every load and pick up new versions.
+          HTTP=$(curl -sS -o /tmp/upload.out -w '%{http_code}' \
+            -X POST "https://$SUPABASE_PROJECT_REF.supabase.co/storage/v1/object/widgets/widget.iife.js" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/javascript" \
+            -H "Cache-Control: no-cache" \
+            -H "x-upsert: true" \
+            --data-binary "@$BUNDLE")
+          echo "HTTP $HTTP"
+          cat /tmp/upload.out
+          echo
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Upload failed (HTTP $HTTP)"
+            exit 1
+          fi
+
+      - name: Verify the uploaded bundle is served
+        run: |
+          URL="https://$SUPABASE_PROJECT_REF.supabase.co/storage/v1/object/public/widgets/widget.iife.js"
+          REMOTE_SIZE=$(curl -sI "$URL?cb=$(date +%s)" | grep -i content-length | awk '{print $2}' | tr -d '\r')
+          LOCAL_SIZE=$(wc -c < dist/widget.iife.js)
+          echo "Remote: $REMOTE_SIZE bytes / Local: $LOCAL_SIZE bytes"
+          if [ "$REMOTE_SIZE" != "$LOCAL_SIZE" ]; then
+            echo "::warning::Remote size doesn't match local size — CDN may need a moment to propagate."
+          fi
