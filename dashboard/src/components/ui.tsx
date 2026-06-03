@@ -121,24 +121,41 @@ export function Button({
   ...rest
 }: {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold'
   type?: 'button' | 'submit'
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  // Editorial design system: pills, not rectangles. The wine gradient
+  // variant ("gold") is reserved for the highest-intent CTAs (Get embed
+  // code, Invite, Publish). Primary stays as ink-on-cream for everything
+  // else; secondary becomes a hairline-shadow pill on cream.
   const variants = {
-    primary: 'bg-ink text-accent-fg hover:opacity-90',
-    secondary: 'bg-surface text-ink border border-border hover:border-border-strong',
-    ghost: 'text-ink-soft hover:bg-surface-sunken hover:text-ink',
-    danger: 'text-danger hover:bg-danger-bg',
-  }
+    primary:
+      'bg-ink text-[var(--cream-50)] hover:-translate-y-px hover:shadow-[0_12px_28px_-8px_rgba(41,24,24,0.18)]',
+    secondary:
+      'bg-surface text-ink shadow-[inset_0_0_0_1px_var(--border-strong)] hover:shadow-[inset_0_0_0_1px_var(--ink)] hover:bg-[var(--cream-50)]',
+    ghost: 'text-ink-soft hover:bg-[var(--cream-100)]',
+    danger:
+      'bg-surface text-danger shadow-[inset_0_0_0_1px_color-mix(in_oklab,var(--danger)_35%,transparent)] hover:bg-[var(--danger-bg)]',
+    gold:
+      'text-[var(--parchment)] hover:-translate-y-px hover:shadow-[0_12px_28px_-8px_rgba(41,24,24,0.22),0_0_24px_var(--accent-glow)]',
+  } as const
   const sizes = {
-    sm: 'text-xs px-2.5 py-1.5',
-    md: 'text-sm px-3.5 py-2',
-  }
+    sm: 'h-[30px] px-3 text-[12px]',
+    md: 'h-9 px-4 text-[13px]',
+    lg: 'h-[42px] px-[22px] text-sm',
+  } as const
+  // The wine gradient sits behind text — inline-style so Tailwind doesn't
+  // tree-shake it. Other variants get tailwind classes.
+  const goldStyle =
+    variant === 'gold'
+      ? { backgroundImage: 'var(--gradient-gold)' as string }
+      : undefined
   return (
     <button
       type={type}
-      className={`rounded-md font-medium transition-all inline-flex items-center gap-1.5 ${variants[variant]} ${sizes[size]} disabled:opacity-50 disabled:cursor-not-allowed`}
+      style={goldStyle}
+      className={`rounded-full font-medium tracking-[0.01em] inline-flex items-center gap-1.5 transition-all duration-200 ease-[cubic-bezier(.16,1,.3,1)] ${variants[variant]} ${sizes[size]} disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-y-0 disabled:shadow-none`}
       {...rest}
     >
       {children}

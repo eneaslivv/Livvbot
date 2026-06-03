@@ -110,7 +110,8 @@ export default async function TenantOverview({ params }: { params: { slug: strin
               </Link>
               <Link
                 href={`/dashboard/${params.slug}/embed`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium bg-ink text-accent-fg px-3 py-1.5 rounded-lg hover:bg-ink-soft transition-colors"
+                style={{ backgroundImage: 'var(--gradient-gold)', color: 'var(--parchment)' }}
+                className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full transition-all hover:-translate-y-px hover:shadow-[0_12px_28px_-8px_rgba(41,24,24,0.22),0_0_24px_var(--accent-glow)]"
               >
                 <Copy className="w-3.5 h-3.5" />
                 Get embed code

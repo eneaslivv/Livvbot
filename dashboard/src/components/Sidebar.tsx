@@ -91,16 +91,18 @@ function NavLink({
       href={href}
       prefetch={true}
       onClick={handleClick}
-      className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors group ${
+      className={`relative flex items-center gap-2.5 px-2.5 py-2 rounded-md text-[13px] transition-all duration-150 ease-[cubic-bezier(.16,1,.3,1)] group ${
         active
-          ? 'bg-ink text-accent-fg'
+          ? 'bg-[var(--cream-100)] text-ink font-medium'
           : isPending
             ? 'bg-surface-sunken text-ink'
-            : 'text-ink-soft hover:bg-surface-sunken hover:text-ink'
+            : 'text-ink-soft hover:bg-[var(--cream-50)] hover:text-ink'
       }`}
     >
+      {/* Gold gradient strip on the active item — Livv Studio signature */}
+      {active && <span className="nav-active-strip" aria-hidden />}
       <Icon
-        className={`w-[15px] h-[15px] shrink-0 ${
+        className={`w-4 h-4 shrink-0 ${
           active ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
         } transition-opacity`}
       />
@@ -152,13 +154,20 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
 
   return (
     <aside className="w-64 bg-surface border-r border-border flex flex-col h-screen sticky top-0 shrink-0">
-      {/* Brand */}
+      {/* Brand — Livv Studio mark from the editorial design system */}
       <div className="px-4 h-14 flex items-center border-b border-border">
-        <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-6 h-6 rounded-md bg-ink text-accent-fg flex items-center justify-center text-[10px] font-black tracking-tight">
-            L
+        <Link href="/dashboard" className="flex items-center gap-2.5 group">
+          <svg width="28" height="28" viewBox="0 0 180 180" className="block" style={{ borderRadius: 6 }}>
+            <rect width="180" height="180" rx="37" fill="var(--cream-900)" />
+            <g transform="scale(0.95) translate(4.5 4.5)">
+              <path fill="var(--cream-50)" d="M101.141 53H136.632C151.023 53 162.689 64.6662 162.689 79.0573V112.904H148.112V79.0573C148.112 78.7105 148.098 78.3662 148.072 78.0251L112.581 112.898C112.701 112.902 112.821 112.904 112.941 112.904H148.112V126.672H112.941C98.5504 126.672 86.5638 114.891 86.5638 100.5V66.7434H101.141V100.5C101.141 101.15 101.191 101.792 101.289 102.422L137.56 66.7816C137.255 66.7563 136.945 66.7434 136.632 66.7434H101.141V53Z" />
+              <path fill="var(--cream-50)" d="M65.2926 124.136L14 66.7372H34.6355L64.7495 100.436V66.7372H80.1365V118.47C80.1365 126.278 70.4953 129.958 65.2926 124.136Z" />
+            </g>
+          </svg>
+          <div className="leading-tight">
+            <div className="font-semibold text-[13px] tracking-[-0.01em]">LIVV Bots</div>
+            <div className="meta text-[9px] opacity-70">STUDIO CONSOLE</div>
           </div>
-          <span className="font-semibold text-[13px] tracking-tight">LIVV Bots</span>
         </Link>
       </div>
 
@@ -260,9 +269,7 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
       {/* Tenant nav */}
       {currentSlug && (
         <nav className="px-2 pt-3 flex-1 overflow-y-auto">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint px-2 mb-1">
-            Bot
-          </div>
+          <div className="eyebrow px-2 mb-2">Bot</div>
           <ul className="space-y-0.5">
             {navItems.map((item) => {
               const href = `/dashboard/${currentSlug}${item.key}`
@@ -302,9 +309,7 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
       {/* Admin link */}
       {isAdmin && (
         <div className="px-2 pb-2">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-ink-faint px-2 mb-1 mt-3">
-            LIVV Studio
-          </div>
+          <div className="eyebrow px-2 mb-2 mt-4">LIVV Studio</div>
           <Link
             href="/admin/tenants"
             className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-[13px] transition-colors ${
@@ -327,21 +332,17 @@ export function Sidebar({ tenants, userEmail, isAdmin }: Props) {
 
       {/* User footer */}
       <div className="border-t border-border p-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-surface-sunken border border-border text-ink flex items-center justify-center text-[11px] font-bold shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-8 h-8 rounded-full text-[var(--parchment)] flex items-center justify-center text-[11px] font-semibold shrink-0"
+            style={{ background: 'var(--gradient-gold)' }}
+          >
             {userEmail[0]?.toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium truncate">{userEmail}</div>
-            <div className="text-[10px] text-ink-muted flex items-center gap-1">
-              {isAdmin ? (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-success" />
-                  LIVV admin
-                </>
-              ) : (
-                'Member'
-              )}
+            <div className="text-[12.5px] font-medium truncate">{userEmail}</div>
+            <div className="meta text-[9.5px]">
+              {isAdmin ? 'LIVV ADMIN' : 'MEMBER'}
             </div>
           </div>
           <button

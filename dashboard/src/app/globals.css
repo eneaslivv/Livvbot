@@ -2,82 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
 /* ============================================================
-   Theme tokens — Vercel-inspired, light + dark
+   Theme tokens — LIVV Studio editorial palette
+   Cream neutrals + wine inks + gold accent. The token NAMES are
+   unchanged so the rest of the app keeps working; only the values
+   shift to the warmer system.
    ============================================================ */
 
 :root {
-  /* Surfaces */
-  --bg: #ffffff;
+  /* Raw palette */
+  --cream-50: #FDFBF7;
+  --cream-100: #F5F2EB;
+  --cream-200: #E6E2D8;
+  --cream-300: #D6D1C7;
+  --cream-400: #A8A29A;
+  --cream-500: #78736A;
+  --cream-600: #52525B;
+  --cream-700: #3F3F46;
+  --cream-800: #27272A;
+  --cream-900: #09090B;
+
+  --wine-100: #7a4038;
+  --wine-200: #5c1d18;
+  --wine-300: #3d1214;
+  --wine-400: #2C0405;
+  --wine-500: #2A1818;
+
+  --parchment: #EDE5D8;
+
+  --gold: #C4A35A;
+  --gold-soft: #D4A574;
+  --gold-bright: #E8BC59;
+
+  /* Semantic — kept compatible with the rest of the app */
+  --bg: var(--cream-50);
   --surface: #ffffff;
-  --surface-sunken: #fafafa;
+  --surface-sunken: var(--cream-100);
   --surface-raised: #ffffff;
 
-  /* Borders */
-  --border: #eaeaea;
-  --border-strong: #d4d4d4;
-  --border-subtle: #f0f0f0;
+  --border: var(--cream-200);
+  --border-strong: var(--cream-300);
+  --border-subtle: #EFEBE2;
 
-  /* Text */
-  --ink: #0a0a0a;
-  --ink-soft: #404040;
-  --ink-muted: #737373;
-  --ink-faint: #a3a3a3;
+  --ink: var(--cream-900);
+  --ink-soft: var(--wine-500);
+  --ink-muted: var(--cream-500);
+  --ink-faint: var(--cream-400);
 
-  /* Accent — inverts between themes: in light, black CTAs; in dark, white CTAs */
-  --accent: #0a0a0a;
-  --accent-fg: #ffffff;
-  --accent-soft: #fef3c7;
-  --accent-glow: #fde68a;
+  --accent: var(--gold);
+  --accent-fg: var(--cream-900);
+  --accent-soft: rgba(196, 163, 90, 0.12);
+  --accent-glow: rgba(232, 188, 89, 0.35);
 
-  /* Status */
-  --success: #0070f3;
-  --success-bg: #eff6ff;
-  --success-fg: #1e40af;
-  --warn: #f59e0b;
-  --warn-bg: #fffbeb;
-  --warn-fg: #92400e;
-  --danger: #e11d48;
-  --danger-bg: #fef2f2;
-  --danger-fg: #991b1b;
+  --success: #5d7d52;
+  --success-bg: rgba(118, 146, 104, 0.14);
+  --success-fg: #4d6b43;
+  --warn: #b07d2e;
+  --warn-bg: rgba(212, 165, 116, 0.16);
+  --warn-fg: #946425;
+  --danger: #b3402f;
+  --danger-bg: rgba(179, 64, 47, 0.10);
+  --danger-fg: #8a2d20;
 
-  --shadow-color: rgba(0, 0, 0, 0.06);
+  --shadow-color: rgba(41, 24, 24, 0.06);
+
+  /* Display + utility fonts */
+  --font-mono: "JetBrains Mono", ui-monospace, "Courier New", monospace;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Radii */
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 24px; --r-pill: 9999px;
+
+  /* Wine + cream signature gradients */
+  --gradient-gold: linear-gradient(110deg, #2C0405 0%, #5c1d18 42%, #2C0405 82%);
+  --gradient-hero: linear-gradient(135deg, #fbf7ee 0%, #f3ebda 48%, #ece0c9 100%);
+  --ease: cubic-bezier(.16, 1, .3, 1);
 }
 
 .dark {
-  /* Surfaces — true black base with elevated grays */
-  --bg: #000000;
-  --surface: #0a0a0a;
-  --surface-sunken: #000000;
-  --surface-raised: #111111;
+  /* Wine-on-cream inverted: deep wine surfaces, cream ink */
+  --bg: #1a0d0e;
+  --surface: #261518;
+  --surface-sunken: #1a0d0e;
+  --surface-raised: #2C0405;
 
-  /* Borders */
-  --border: #1f1f1f;
-  --border-strong: #303030;
-  --border-subtle: #171717;
+  --border: #3a2024;
+  --border-strong: #4a2a2f;
+  --border-subtle: #2a1417;
 
-  /* Text */
-  --ink: #ededed;
-  --ink-soft: #b4b4b4;
-  --ink-muted: #8c8c8c;
-  --ink-faint: #5c5c5c;
+  --ink: var(--cream-50);
+  --ink-soft: var(--cream-200);
+  --ink-muted: var(--cream-400);
+  --ink-faint: #6e5f5b;
 
-  /* Accent */
-  --accent: #ededed;
-  --accent-fg: #0a0a0a;
-  --accent-soft: #1f1703;
-  --accent-glow: #3d2a05;
+  --accent: var(--gold-bright);
+  --accent-fg: var(--cream-900);
+  --accent-soft: rgba(232, 188, 89, 0.14);
+  --accent-glow: rgba(232, 188, 89, 0.32);
 
-  /* Status */
-  --success: #3b82f6;
-  --success-bg: #0c1e3d;
-  --success-fg: #93c5fd;
-  --warn: #f59e0b;
-  --warn-bg: #221303;
-  --warn-fg: #fcd34d;
-  --danger: #f43f5e;
-  --danger-bg: #2a0a12;
-  --danger-fg: #fecdd3;
+  --success: #8fb380;
+  --success-bg: rgba(118, 146, 104, 0.16);
+  --success-fg: #b6d2aa;
+  --warn: #d4a574;
+  --warn-bg: rgba(212, 165, 116, 0.16);
+  --warn-fg: #e6c89b;
+  --danger: #d76752;
+  --danger-bg: rgba(179, 64, 47, 0.18);
+  --danger-fg: #f0a08e;
 
   --shadow-color: rgba(0, 0, 0, 0.45);
 
@@ -87,10 +120,85 @@
 html, body {
   background: var(--bg);
   color: var(--ink);
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
 }
+
+/* ---- Editorial utility classes from the Livv Studio design system ---- */
+.eyebrow {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, var(--wine-500) 55%, transparent);
+}
+.dark .eyebrow {
+  color: color-mix(in oklab, var(--cream-300) 65%, transparent);
+}
+.meta {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+}
+
+.text-gold {
+  background-image: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.dark .text-gold {
+  background-image: linear-gradient(110deg, var(--gold-bright) 0%, var(--gold-soft) 50%, var(--gold-bright) 100%);
+}
+
+/* Dashed divider, livv signature */
+.dashed { border: none; border-top: 1px dashed var(--border-strong); opacity: 0.7; margin: 0; }
+.dashed-v { border-left: 1px dashed var(--border-strong); opacity: 0.7; }
+
+/* Pill-shaped button helpers */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 0 16px;
+  height: 36px;
+  border-radius: var(--r-pill);
+  transition: all 0.25s var(--ease);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+.btn-pill-primary { background: var(--ink); color: var(--cream-50); }
+.btn-pill-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -8px rgba(41,24,24,0.18); }
+.btn-pill-gold { background: var(--gradient-gold); color: var(--parchment); }
+.btn-pill-gold:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -8px rgba(41,24,24,0.22), 0 0 24px var(--accent-glow); }
+
+/* Active nav indicator: gold gradient strip */
+.nav-active-strip {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2.5px;
+  border-radius: 99px;
+  background: var(--gradient-gold);
+}
+.dark .nav-active-strip {
+  background: linear-gradient(180deg, var(--gold-bright), var(--gold));
+}
+
+/* Subtle entrance animation */
+@keyframes riseUp { from { transform: translateY(8px); } to { transform: none; } }
+.anim-up { animation: riseUp 0.4s var(--ease); }
+@media (prefers-reduced-motion: reduce) { .anim-up { animation: none; } }
 
 /* Prevent theme flash on initial render */
 html {
@@ -138,13 +246,12 @@ html {
   background-position: 0 0;
 }
 
-/* Hero shimmer — uses accent in light, subtle glow in dark */
+/* Hero shimmer — the cream gradient from the editorial design */
 .hero-shimmer {
-  background: linear-gradient(135deg, var(--surface) 0%, var(--accent-soft) 100%);
+  background: var(--gradient-hero);
 }
-
 .dark .hero-shimmer {
-  background: linear-gradient(135deg, #0a0a0a 0%, #141007 100%);
+  background: linear-gradient(135deg, #2a1417 0%, #1a0d0e 48%, #2C0405 100%);
 }
 
 /* Gradient border trick */
