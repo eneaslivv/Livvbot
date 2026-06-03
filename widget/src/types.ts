@@ -41,10 +41,12 @@ export interface WidgetConfig {
 }
 
 export interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'human'
   content: string
   ts: number
   sources?: SourceRef[]
+  /** Optional email of the human teammate, for the "Team" badge. */
+  author_email?: string
 }
 
 export interface SourceRef {

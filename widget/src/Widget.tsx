@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { sendMessage, getOrCreateSessionId } from './api'
+import { sendMessage, getOrCreateSessionId, fetchChatHistory } from './api'
 import type { WidgetConfig, ChatMessage, QuickAction, SourceRef } from './types'
 import {
   captureAutoContext,
@@ -108,7 +108,26 @@ export function Widget({ config }: Props) {
 
   useEffect(() => {
     if (isOpen) setHasPulse(false)
-  }, [isOpen])
+    // First open of this session: pull any prior history (in case a human
+    // replied from the dashboard since the last visit).
+    if (isOpen && messages.length === 0) {
+      let cancelled = false
+      fetchChatHistory(config.apiUrl, config.tenantSlug, sessionId.current).then((h) => {
+        if (cancelled || !h || !h.messages?.length) return
+        setMessages(
+          h.messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            ts: m.ts ? new Date(m.ts).getTime() : Date.now(),
+            author_email: m.author_email,
+          }))
+        )
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+  }, [isOpen, config.apiUrl, config.tenantSlug])
 
   // Scroll behavior: anchor top of assistant reply, snap to bottom on user send.
   useEffect(() => {
@@ -251,12 +270,23 @@ export function Widget({ config }: Props) {
             {messages.map((m, i) => {
               const productSources = (m.sources ?? []).filter((s) => s.type === 'product')
               const otherSources = (m.sources ?? []).filter((s) => s.type !== 'product')
+              const rowRole = m.role === 'human' ? 'assistant' : m.role
               return (
                 <div
                   key={i}
-                  className={`livv-bot-msg-row livv-bot-msg-row-${m.role}`}
+                  className={`livv-bot-msg-row livv-bot-msg-row-${rowRole}`}
                 >
-                  <div className={`livv-bot-msg livv-bot-msg-${m.role}`}>
+                  {m.role === 'human' && (
+                    <div className="livv-bot-human-badge">
+                      <span className="livv-bot-human-dot" />
+                      Team{m.author_email ? ` · ${m.author_email}` : ''}
+                    </div>
+                  )}
+                  <div
+                    className={`livv-bot-msg livv-bot-msg-${
+                      m.role === 'human' ? 'human' : m.role
+                    }`}
+                  >
                     <MessageContent text={m.content} />
                   </div>
                   {otherSources.length > 0 && (

@@ -84,7 +84,30 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'tenant misconfigured (no openai key)' }, 500, origin, tenant.allowed_origins)
     }
 
-    const handoff = detectHandoff(message, tenant.handoff_keywords)
+    // If a human already took over this conversation in the dashboard,
+    // the bot stays out of the way. We still store the visitor's message
+    // so the human sees it, and return a short ack instead of calling the LLM.
+    const { data: ongoing } = await supabase
+      .from('conversations')
+      .select('id, human_status')
+      .eq('tenant_id', tenant.id)
+      .eq('session_id', sessionId)
+      .maybeSingle()
+    if (ongoing?.human_status === 'claimed') {
+      const ack = 'Thanks — a team member just got your message and will reply here shortly.'
+      await logConversation(supabase, tenant.id, sessionId, productContext, message, ack, {
+        handoffTriggered: true,
+        handoffReason: 'human-claimed',
+        tokenUsage: {},
+        ipHash: ipHashValue,
+      })
+      return jsonResponse(
+        { message: ack, handoff: true, claimed: true, remaining },
+        200, origin, tenant.allowed_origins
+      )
+    }
+
+    const handoff = detectHumanRequest(message, tenant.handoff_keywords)
     if (handoff.triggered) {
       const handoffReply = buildHandoffReply(tenant.fallback_email, tenant.brand_config?.botName ?? 'the team')
       await logConversation(supabase, tenant.id, sessionId, productContext, message, handoffReply, {
@@ -221,6 +244,39 @@ function buildHandoffReply(email: string | null, botName: string): string {
   return `This one is better handled by a human. ${emailLine} ${botName} will be here when you're back!`
 }
 
+// Strict-enough patterns to capture leads without trapping random noise.
+const EMAIL_RE = /\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b/
+const PHONE_RE = /(?:\+?\d[\s().-]?){8,15}/
+
+function extractLead(text: string): { email?: string; phone?: string } {
+  const lead: { email?: string; phone?: string } = {}
+  const e = text.match(EMAIL_RE)
+  if (e) lead.email = e[0].toLowerCase()
+  const p = text.match(PHONE_RE)
+  if (p) {
+    const digits = p[0].replace(/\D/g, '')
+    if (digits.length >= 8 && digits.length <= 15) lead.phone = p[0].trim()
+  }
+  return lead
+}
+
+// Broader intent detection on top of the tenant's hand-picked keywords —
+// covers the most common ways a visitor asks for a person.
+const HUMAN_INTENT_RE =
+  /\b(hablar|talk|speak|chat)\s+(con|to|with)\s+(una?\s+)?(persona|alguien|human|someone|agent|representative|equipo|team)\b/i
+const SUPPORT_WORDS_RE =
+  /\b(real person|agent|representative|customer service|atenci[oó]n al cliente|asesor|soporte humano|live chat|necesito ayuda real)\b/i
+
+function detectHumanRequest(userMessage: string, handoffKeywords: string[]): { triggered: boolean; reason?: string } {
+  const lower = userMessage.toLowerCase()
+  for (const kw of handoffKeywords) {
+    if (lower.includes(kw.toLowerCase())) return { triggered: true, reason: `keyword:${kw}` }
+  }
+  if (HUMAN_INTENT_RE.test(userMessage)) return { triggered: true, reason: 'intent:talk-to-human' }
+  if (SUPPORT_WORDS_RE.test(userMessage)) return { triggered: true, reason: 'intent:support-words' }
+  return { triggered: false }
+}
+
 async function logConversation(
   supabase: any, tenantId: string, sessionId: string,
   productContext: ProductContext | undefined, userMessage: string, assistantMessage: string,
@@ -228,7 +284,7 @@ async function logConversation(
 ) {
   const { data: existing } = await supabase
     .from('conversations')
-    .select('id, messages')
+    .select('id, messages, lead_data')
     .eq('tenant_id', tenantId)
     .eq('session_id', sessionId)
     .maybeSingle()
@@ -238,12 +294,29 @@ async function logConversation(
     { role: 'assistant', content: assistantMessage, ts: new Date().toISOString() },
   ]
 
+  // Merge any auto-extracted contact info from the new user message into
+  // existing lead_data — preserves whatever was captured in earlier turns.
+  const fresh = extractLead(userMessage)
+  const existingLead = (existing?.lead_data ?? {}) as Record<string, any>
+  const mergedLead = { ...existingLead }
+  if (fresh.email && !mergedLead.email) {
+    mergedLead.email = fresh.email
+    mergedLead.captured_at = new Date().toISOString()
+    mergedLead.source = 'chat-auto'
+  }
+  if (fresh.phone && !mergedLead.phone) {
+    mergedLead.phone = fresh.phone
+    if (!mergedLead.captured_at) mergedLead.captured_at = new Date().toISOString()
+    if (!mergedLead.source) mergedLead.source = 'chat-auto'
+  }
+
   if (existing) {
     await supabase.from('conversations').update({
       messages: [...existing.messages, ...newMessages],
       handoff_triggered: opts.handoffTriggered,
       handoff_reason: opts.handoffReason ?? null,
       token_usage: opts.tokenUsage ?? {},
+      lead_data: mergedLead,
     }).eq('id', existing.id)
   } else {
     await supabase.from('conversations').insert({
@@ -251,6 +324,7 @@ async function logConversation(
       session_id: sessionId,
       product_context: productContext ?? null,
       messages: newMessages,
+      lead_data: mergedLead,
       handoff_triggered: opts.handoffTriggered,
       handoff_reason: opts.handoffReason ?? null,
       token_usage: opts.tokenUsage ?? {},

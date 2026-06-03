@@ -76,6 +76,39 @@ export async function fetchServerConfig(
   }
 }
 
+export interface ChatHistory {
+  messages: Array<{
+    role: 'user' | 'assistant' | 'human'
+    content: string
+    ts: string
+    author_email?: string
+  }>
+  humanStatus: 'open' | 'claimed' | 'resolved'
+  handoffTriggered: boolean
+}
+
+/**
+ * Fetch the prior message history for this session. Lets the visitor see
+ * any replies a human teammate posted from the dashboard since their last
+ * visit.
+ */
+export async function fetchChatHistory(
+  apiUrl: string,
+  tenantSlug: string,
+  sessionId: string
+): Promise<ChatHistory | null> {
+  try {
+    const res = await fetch(
+      `${apiUrl}/functions/v1/chat-history?tenant=${encodeURIComponent(tenantSlug)}&session=${encodeURIComponent(sessionId)}`,
+      { method: 'GET' }
+    )
+    if (!res.ok) return null
+    return (await res.json()) as ChatHistory
+  } catch {
+    return null
+  }
+}
+
 export function getOrCreateSessionId(): string {
   const KEY = 'livv-bot-session-id'
   let id = sessionStorage.getItem(KEY)

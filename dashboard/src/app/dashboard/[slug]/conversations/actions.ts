@@ -69,6 +69,84 @@ export async function archiveCorrection(
   return { ok: true }
 }
 
+export async function replyAsHuman(
+  slug: string,
+  input: { conversationId: string; content: string }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const content = input.content.trim()
+    if (!content) return { ok: false, error: 'message is empty' }
+
+    const supabase = createClient()
+    const { data: sessionData } = await supabase.auth.getSession()
+    const userId = sessionData.session?.user.id ?? null
+    const userEmail = sessionData.session?.user.email ?? null
+
+    const { data: conv, error: convErr } = await supabase
+      .from('conversations')
+      .select('id, messages, human_status, claimed_by, tenant:tenants(slug)')
+      .eq('id', input.conversationId)
+      .single()
+    if (convErr || !conv) return { ok: false, error: convErr?.message ?? 'conversation not found' }
+
+    const messages = Array.isArray(conv.messages) ? conv.messages : []
+    const next = [
+      ...messages,
+      {
+        role: 'human',
+        content,
+        ts: new Date().toISOString(),
+        author_email: userEmail,
+      },
+    ]
+
+    const update: Record<string, any> = {
+      messages: next,
+      human_status: 'claimed',
+      claimed_by: userId,
+      claimed_at: conv.claimed_by ? undefined : new Date().toISOString(),
+    }
+    // Strip undefined so we don't blow away claimed_at on subsequent replies.
+    Object.keys(update).forEach((k) => update[k] === undefined && delete update[k])
+
+    const { error } = await supabase.from('conversations').update(update).eq('id', input.conversationId)
+    if (error) return { ok: false, error: error.message }
+
+    revalidatePath(`/dashboard/${slug}/conversations`)
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, error: (err as Error).message }
+  }
+}
+
+export async function markResolved(
+  slug: string,
+  conversationId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('conversations')
+    .update({ human_status: 'resolved', resolved_at: new Date().toISOString() })
+    .eq('id', conversationId)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/dashboard/${slug}/conversations`)
+  return { ok: true }
+}
+
+export async function reopenConversation(
+  slug: string,
+  conversationId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('conversations')
+    .update({ human_status: 'open', resolved_at: null, claimed_by: null, claimed_at: null })
+    .eq('id', conversationId)
+  if (error) return { ok: false, error: error.message }
+  revalidatePath(`/dashboard/${slug}/conversations`)
+  return { ok: true }
+}
+
 export async function submitFeedback(
   slug: string,
   input: {

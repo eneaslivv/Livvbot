@@ -261,6 +261,41 @@
   box-shadow: var(--livv-shadow-card);
 }
 
+/* Replies authored by a human teammate from the dashboard. Same shape as
+   the assistant bubble but green-tinted so the visitor can tell it apart. */
+.livv-bot-msg-human {
+  background: #ecfdf5;
+  color: #064e3b;
+  border: 1px solid #a7f3d0;
+  border-bottom-left-radius: 6px;
+  border-radius: var(--livv-radius-bubble);
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  max-width: 86%;
+  letter-spacing: -0.005em;
+  word-wrap: break-word;
+}
+.livv-bot-human-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #047857;
+  margin: 4px 0 4px 2px;
+}
+.livv-bot-human-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+}
+
 /* timestamp under bubble */
 .livv-bot-msg-time {
   font-size: 10px;

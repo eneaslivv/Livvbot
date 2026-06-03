@@ -14,6 +14,9 @@ import {
 import { EmptyState } from '@/components/ui'
 import { MessageContent } from '@/components/MessageContent'
 import { MessageActions } from '@/components/MessageActions'
+import { HumanReplyComposer } from '@/components/HumanReplyComposer'
+import Link from 'next/link'
+import { Mail, UserCheck, Filter } from 'lucide-react'
 
 function formatRelative(iso: string): string {
   const d = new Date(iso)
@@ -35,21 +38,33 @@ function formatTime(iso: string): string {
   })
 }
 
+type FilterKey = 'all' | 'leads' | 'handoffs' | 'unresolved'
+
 export default async function ConversationsPage({
   params,
+  searchParams,
 }: {
   params: { slug: string }
+  searchParams: { filter?: string }
 }) {
   const tenant = await getTenantBySlug(params.slug)
   if (!tenant) notFound()
 
+  const filter: FilterKey = (['leads', 'handoffs', 'unresolved'].includes(searchParams.filter ?? '')
+    ? searchParams.filter
+    : 'all') as FilterKey
+
   const supabase = createClient()
-  const { data: conversations } = await supabase
+  let query = supabase
     .from('conversations')
     .select('*')
     .eq('tenant_id', tenant.id)
     .order('updated_at', { ascending: false })
-    .limit(50)
+    .limit(200)
+  if (filter === 'leads') query = query.not('lead_data->>email', 'is', null)
+  if (filter === 'handoffs') query = query.eq('handoff_triggered', true)
+  if (filter === 'unresolved') query = query.eq('handoff_triggered', true).neq('human_status', 'resolved')
+  const { data: conversations } = await query
 
   const list = conversations ?? []
 
@@ -74,14 +89,33 @@ export default async function ConversationsPage({
   const accent = bc.accentColor ?? '#d4a017'
   const primary = bc.primaryColor ?? '#111110'
 
+  // Stats are computed across ALL conversations for this tenant — they
+  // shouldn't change just because the user toggled a filter.
+  const { data: stats } = await supabase
+    .from('conversations')
+    .select('id, handoff_triggered, human_status, lead_data')
+    .eq('tenant_id', tenant.id)
+  const totalAll = stats?.length ?? 0
+  const handoffCount = (stats ?? []).filter((c: any) => c.handoff_triggered).length
+  const unresolvedCount = (stats ?? []).filter(
+    (c: any) => c.handoff_triggered && c.human_status !== 'resolved'
+  ).length
+  const leadsCount = (stats ?? []).filter(
+    (c: any) => c.lead_data && (c.lead_data.email || c.lead_data.phone)
+  ).length
   const totalMessages = list.reduce(
     (acc: number, c: any) => acc + (Array.isArray(c.messages) ? c.messages.length : 0),
     0
   )
-  const handoffCount = list.filter((c: any) => c.handoff_triggered).length
-  const resolvedCount = list.length - handoffCount
 
-  if (list.length === 0) {
+  const tabs: { key: FilterKey; label: string; count: number; icon: any }[] = [
+    { key: 'all', label: 'All', count: totalAll, icon: MessageSquare },
+    { key: 'leads', label: 'Leads', count: leadsCount, icon: Mail },
+    { key: 'handoffs', label: 'Handoffs', count: handoffCount, icon: AlertTriangle },
+    { key: 'unresolved', label: 'Unresolved', count: unresolvedCount, icon: UserCheck },
+  ]
+
+  if (totalAll === 0) {
     return (
       <EmptyState
         icon={MessageSquare}
@@ -93,11 +127,61 @@ export default async function ConversationsPage({
 
   return (
     <div className="space-y-5">
-      {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatPill label="Sessions" value={list.length} icon={MessageSquare} />
-        <StatPill label="Resolved" value={resolvedCount} icon={CheckCircle2} accent="emerald" />
+      {/* Summary stats — 4 pills now: Sessions / Leads / Handoffs / Unresolved */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatPill label="Sessions" value={totalAll} icon={MessageSquare} />
+        <StatPill label="Leads" value={leadsCount} icon={Mail} accent="emerald" />
         <StatPill label="Handoffs" value={handoffCount} icon={AlertTriangle} accent="amber" />
+        <StatPill label="Unresolved" value={unresolvedCount} icon={UserCheck} accent={unresolvedCount > 0 ? 'amber' : 'neutral'} />
+      </div>
+
+      {/* Unresolved handoff banner — only shows when there's something pending */}
+      {unresolvedCount > 0 && filter !== 'unresolved' && (
+        <Link
+          href={`/dashboard/${params.slug}/conversations?filter=unresolved`}
+          className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 hover:bg-amber-100 transition-colors"
+        >
+          <div className="flex items-center gap-2.5 text-sm text-amber-900">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <strong>{unresolvedCount}</strong> conversation{unresolvedCount === 1 ? '' : 's'} waiting for a human reply
+          </div>
+          <span className="text-xs text-amber-800 font-medium">Open queue →</span>
+        </Link>
+      )}
+
+      {/* Filter chips */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Filter className="w-3.5 h-3.5 text-ink-faint mr-1" />
+        {tabs.map((t) => {
+          const Icon = t.icon
+          const active = filter === t.key
+          const href =
+            t.key === 'all'
+              ? `/dashboard/${params.slug}/conversations`
+              : `/dashboard/${params.slug}/conversations?filter=${t.key}`
+          return (
+            <Link
+              key={t.key}
+              href={href}
+              className={`inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors ${
+                active
+                  ? 'bg-ink text-accent-fg border-ink'
+                  : 'bg-surface text-ink-soft border-border hover:border-border-strong hover:text-ink'
+              }`}
+            >
+              <Icon className="w-3 h-3" />
+              {t.label}
+              <span className={`tabular-nums ${active ? 'opacity-80' : 'text-ink-muted'}`}>
+                {t.count}
+              </span>
+            </Link>
+          )
+        })}
+        {filter !== 'all' && (
+          <span className="text-[11px] text-ink-muted ml-2">
+            Showing {list.length} of {totalAll}
+          </span>
+        )}
       </div>
 
       <div className="space-y-3">
@@ -125,10 +209,25 @@ export default async function ConversationsPage({
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    {c.handoff_triggered && (
+                    {c.handoff_triggered && c.human_status !== 'resolved' && (
                       <span className="inline-flex items-center gap-1 text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
                         <AlertTriangle className="w-2.5 h-2.5" />
-                        Handoff
+                        Needs reply
+                      </span>
+                    )}
+                    {c.human_status === 'resolved' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold uppercase tracking-wider">
+                        <CheckCircle2 className="w-2.5 h-2.5" />
+                        Resolved
+                      </span>
+                    )}
+                    {c.lead_data?.email && (
+                      <span
+                        className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded font-semibold lowercase tracking-wide"
+                        title={`Lead captured: ${c.lead_data.email}`}
+                      >
+                        <Mail className="w-2.5 h-2.5" />
+                        {c.lead_data.email.length > 24 ? c.lead_data.email.slice(0, 22) + '…' : c.lead_data.email}
                       </span>
                     )}
                     {c.product_context?.name && (
@@ -171,11 +270,12 @@ export default async function ConversationsPage({
                 <div className="max-w-2xl mx-auto px-6 py-6 space-y-4">
                   {msgs.map((m: any, i: number) => {
                     const isUser = m.role === 'user'
+                    const isHuman = m.role === 'human'
                     const ts = m.ts ? formatTime(m.ts) : ''
                     // Find the user message that prompted this assistant reply,
                     // walking back from the current index. Used by the Improve modal.
                     let precedingUserMsg = ''
-                    if (!isUser) {
+                    if (!isUser && !isHuman) {
                       for (let j = i - 1; j >= 0; j--) {
                         if (msgs[j]?.role === 'user') {
                           precedingUserMsg = String(msgs[j].content ?? '')
@@ -222,11 +322,19 @@ export default async function ConversationsPage({
 
                         {/* Bubble */}
                         <div className={`max-w-[78%] ${isUser ? 'items-end' : 'items-start'}`}>
+                          {isHuman && (
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 mb-1 inline-flex items-center gap-1">
+                              <UserCheck className="w-3 h-3" />
+                              Team {m.author_email ? `· ${m.author_email}` : ''}
+                            </div>
+                          )}
                           <div
                             className={`relative px-4 py-2.5 rounded-lg text-sm leading-relaxed whitespace-pre-wrap shadow-card ${
                               isUser
                                 ? 'text-white rounded-br-md'
-                                : 'bg-surface text-ink rounded-bl-md border border-border'
+                                : isHuman
+                                  ? 'bg-emerald-50 text-emerald-900 rounded-bl-md border border-emerald-200'
+                                  : 'bg-surface text-ink rounded-bl-md border border-border'
                             }`}
                             style={
                               isUser
@@ -245,7 +353,7 @@ export default async function ConversationsPage({
                               {ts}
                             </div>
                           )}
-                          {!isUser && (
+                          {!isUser && !isHuman && (
                             <MessageActions
                               slug={params.slug}
                               conversationId={c.id}
@@ -268,6 +376,13 @@ export default async function ConversationsPage({
                       </div>
                     </div>
                   )}
+
+                  {/* Composer to reply as a human, plus mark-resolved / reopen */}
+                  <HumanReplyComposer
+                    slug={params.slug}
+                    conversationId={c.id}
+                    humanStatus={(c.human_status ?? 'open') as 'open' | 'claimed' | 'resolved'}
+                  />
                 </div>
               </div>
             </details>
@@ -276,7 +391,7 @@ export default async function ConversationsPage({
       </div>
 
       <div className="text-center text-[11px] text-ink-faint pt-2">
-        Showing {list.length} of {list.length} · Last {totalMessages} messages total
+        Showing {list.length} of {totalAll} · Last {totalMessages} messages total
       </div>
     </div>
   )
