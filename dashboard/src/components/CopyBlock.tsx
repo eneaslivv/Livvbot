@@ -10,10 +10,18 @@ function highlight(code: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
-  // Comments
+  // Comments. The `//` branch must NOT match the `//` inside a URL like
+  // https:// — otherwise the rest of the line (the real widget src) gets
+  // styled as a comment, which mangles the snippet when a user copies it by
+  // selecting the rendered text. Split the two cases: HTML comments first,
+  // then JS line comments only when the `//` is not preceded by a colon.
   s = s.replace(
-    /(&lt;!--[\s\S]*?--&gt;|\/\/[^\n]*)/g,
+    /(&lt;!--[\s\S]*?--&gt;)/g,
     '<span class="text-ink-muted italic">$1</span>'
+  )
+  s = s.replace(
+    /(^|[^:])(\/\/[^\n]*)/g,
+    '$1<span class="text-ink-muted italic">$2</span>'
   )
   // Strings
   s = s.replace(
