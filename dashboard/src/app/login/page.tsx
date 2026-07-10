@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Mail, ArrowRight, Check, Lock, KeyRound, AlertCircle } from 'lucide-react'
@@ -8,7 +8,19 @@ import { Mail, ArrowRight, Check, Lock, KeyRound, AlertCircle } from 'lucide-rea
 type Mode = 'password' | 'magiclink'
 type Status = 'idle' | 'sending' | 'sent' | 'error'
 
+// Next.js 14 requires useSearchParams() to sit under a Suspense boundary so
+// the static prerender pass has something to fall back to. Wrap the actual
+// form in Suspense here; the fallback is a bare container that renders
+// nothing but occupies the same layout so there's no flash.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen" />}>
+      <LoginPageInner />
+    </Suspense>
+  )
+}
+
+function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [mode, setMode] = useState<Mode>('magiclink')
