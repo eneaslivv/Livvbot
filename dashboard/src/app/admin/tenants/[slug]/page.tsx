@@ -1,10 +1,23 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
+import { headers } from 'next/headers'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getTenantBySlug } from '@/lib/tenant'
 import { revalidatePath } from 'next/cache'
 import { ArrowLeft, ArrowUpRight, Mail, Trash2, Power } from 'lucide-react'
 import { Card, Field, Button, Alert, Badge } from '@/components/ui'
+
+// Resolve the origin the invite email should point back at. We prefer
+// runtime request headers (works on any Vercel preview / production URL
+// without needing NEXT_PUBLIC_SITE_URL to be set correctly) and only fall
+// back to the env var if the headers aren't available.
+function inviteOrigin(): string {
+  const h = headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host')
+  const proto = h.get('x-forwarded-proto') ?? 'https'
+  if (host) return `${proto}://${host}`
+  return process.env.NEXT_PUBLIC_SITE_URL ?? ''
+}
 
 async function inviteUser(slug: string, formData: FormData) {
   'use server'
@@ -24,14 +37,24 @@ async function inviteUser(slug: string, formData: FormData) {
   const users = listData?.users ?? []
   let userId = users.find((u: any) => u.email === email)?.id
 
+  const origin = inviteOrigin()
+
   if (!userId) {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ''}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?next=/dashboard/${slug}`,
     })
     if (error) {
       redirect(`/admin/tenants/${slug}?error=${encodeURIComponent(error.message)}`)
     }
     userId = data?.user?.id
+  } else {
+    // User already exists (invited to another tenant before) — send a
+    // fresh magic link so they can jump straight into this new bot.
+    await admin.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
+      options: { redirectTo: `${origin}/auth/callback?next=/dashboard/${slug}` },
+    })
   }
 
   if (!userId) return
