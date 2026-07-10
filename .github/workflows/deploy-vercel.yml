@@ -36,6 +36,12 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      # Install project deps first so vercel build can resolve Next.js
+      # runtime packages (styled-jsx et al) from node_modules in the flat
+      # layout the "vercel deploy --prebuilt" step expects.
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
       - name: Pull Vercel project metadata (production env)
         run: vercel pull --yes --environment=production --token=$VERCEL_TOKEN
 
