@@ -23,3 +23,4 @@ out/
 # Supabase
 supabase/.branches/
 supabase/.temp/
+.gstack/
