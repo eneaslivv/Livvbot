@@ -13,6 +13,8 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Los datos de LIVV Bots viven en el schema `bots` del proyecto central
+      db: { schema: 'bots' },
       cookies: {
         getAll() {
           return cookieStore.getAll()
@@ -41,6 +43,6 @@ export function createAdminClient() {
   return createAdminSb(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
+    { db: { schema: 'bots' }, auth: { persistSession: false } }
   )
 }

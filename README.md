@@ -11,8 +11,8 @@ Multi-tenant AI chatbot platform for LIVV Studio clients. Each client (tenant) g
 
 ## Infra (already provisioned)
 
-- Supabase project: `livv-bots` (ref: `hlycvssnnctrudywchxo`)
-- API URL: `https://hlycvssnnctrudywchxo.supabase.co`
+- Supabase project: `livv infy system` (ref: `ngswutcpsgdgmmjnfddi`) — datos en el schema `bots` (migrado 2026-07-12; proyecto viejo hlycvssnnctrudywchxo pausado)
+- API URL: `https://ngswutcpsgdgmmjnfddi.supabase.co`
 - Edge Function `chat` deployed
 - Migrations applied (schema + RLS)
 
@@ -79,7 +79,7 @@ cd widget
 pnpm install
 pnpm build
 # Upload dist/widget.iife.js to the 'widgets' storage bucket in Supabase.
-# Public URL: https://hlycvssnnctrudywchxo.supabase.co/storage/v1/object/public/widgets/widget.iife.js
+# Public URL: https://ngswutcpsgdgmmjnfddi.supabase.co/storage/v1/object/public/widgets/widget.iife.js
 ```
 
 ## Embed snippet
