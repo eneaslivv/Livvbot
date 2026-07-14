@@ -8,7 +8,7 @@ export default async function EmbedPage({ params }: { params: { slug: string } }
   if (!tenant) notFound()
 
   const supabaseUrl =
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://ngswutcpsgdgmmjnfddi.supabase.co'
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://hlycvssnnctrudywchxo.supabase.co'
   const widgetUrl = `${supabaseUrl}/storage/v1/object/public/widgets/widget.iife.js`
   const bc = tenant.brand_config ?? {}
 

@@ -8,5 +8,4 @@ if (!url || !key) {
   throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env')
 }
 
-// Los datos de LIVV Bots viven en el schema `bots` del proyecto central
-export const supabase = createClient(url, key, { db: { schema: 'bots' } })
+export const supabase = createClient(url, key)
